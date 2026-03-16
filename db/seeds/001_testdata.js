@@ -24,12 +24,12 @@ async function seed() {
   await db.execute('DELETE FROM categorie_templates');
 
   const verenigingen = [
-    [1, 'Scouting Regio De Langstraat'],
+    [1, 'Scouting Regio De Langstraat', 'SRL'],
   ];
-  for (const [id, naam] of verenigingen) {
+  for (const [id, naam, afkorting] of verenigingen) {
     await db.execute(
-      'INSERT INTO verenigingen (id, naam) VALUES (?, ?) ON DUPLICATE KEY UPDATE naam=naam',
-      [id, naam]
+      'INSERT INTO verenigingen (id, naam, afkorting) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE naam=naam',
+      [id, naam, afkorting]
     );
   }
 

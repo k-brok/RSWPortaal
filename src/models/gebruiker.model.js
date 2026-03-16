@@ -6,10 +6,12 @@ const db = require('../config/db');
 
 async function alles() {
   const [rows] = await db.execute(`
-    SELECT g.id, g.naam, g.email, g.rol, g.groep_id, gr.naam AS groep, g.geverifieerd,
-           g.aangemaakt_op
+    SELECT g.id, g.naam, g.email, g.rol, g.groep_id,
+           CONCAT(gr.naam, ' (', v.afkorting, ')') AS groep,
+           g.geverifieerd, g.aangemaakt_op
     FROM gebruikers g
-    LEFT JOIN groepen gr ON g.groep_id = gr.id
+    LEFT JOIN groepen gr      ON g.groep_id       = gr.id
+    LEFT JOIN verenigingen v  ON gr.vereniging_id = v.id
     ORDER BY g.naam
   `);
   return rows;
@@ -17,9 +19,12 @@ async function alles() {
 
 async function vindOpId(id) {
   const [rows] = await db.execute(`
-    SELECT g.id, g.naam, g.email, g.rol, g.groep_id, gr.naam AS groep, g.geverifieerd
+    SELECT g.id, g.naam, g.email, g.rol, g.groep_id,
+           CONCAT(gr.naam, ' (', v.afkorting, ')') AS groep,
+           g.geverifieerd
     FROM gebruikers g
-    LEFT JOIN groepen gr ON g.groep_id = gr.id
+    LEFT JOIN groepen gr      ON g.groep_id       = gr.id
+    LEFT JOIN verenigingen v  ON gr.vereniging_id = v.id
     WHERE g.id = ?
   `, [id]);
   return rows[0] ?? null;
@@ -28,9 +33,11 @@ async function vindOpId(id) {
 async function vindOpEmail(email) {
   const [rows] = await db.execute(`
     SELECT g.id, g.naam, g.email, g.wachtwoord_hash, g.rol, g.groep_id,
-           gr.naam AS groep, g.geverifieerd
+           CONCAT(gr.naam, ' (', v.afkorting, ')') AS groep,
+           g.geverifieerd
     FROM gebruikers g
-    LEFT JOIN groepen gr ON g.groep_id = gr.id
+    LEFT JOIN groepen gr      ON g.groep_id       = gr.id
+    LEFT JOIN verenigingen v  ON gr.vereniging_id = v.id
     WHERE g.email = ?
   `, [email]);
   return rows[0] ?? null;
@@ -133,9 +140,12 @@ async function bevestigEmailWijziging(id, nieuwEmail) {
 // ── Groepen (voor dropdowns) ──────────────────────────────────────
 
 async function alleGroepen() {
-  const [rows] = await db.execute(
-    'SELECT id, naam FROM groepen ORDER BY naam'
-  );
+  const [rows] = await db.execute(`
+    SELECT g.id, CONCAT(g.naam, ' (', v.afkorting, ')') AS naam, g.vereniging_id
+    FROM groepen g
+    JOIN verenigingen v ON g.vereniging_id = v.id
+    ORDER BY v.naam, g.naam
+  `);
   return rows;
 }
 

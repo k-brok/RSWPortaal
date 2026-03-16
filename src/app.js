@@ -37,9 +37,10 @@ app.get('/js/app.js', (_req, res) => {
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ── API Routes ────────────────────────────────────────────────────
-app.use('/api/auth',    require('./routes/auth.routes'));
-app.use('/api/profiel', require('./routes/profiel.routes'));
-app.use('/api/admin',   require('./routes/admin.routes'));
+app.use('/api/auth',                 require('./routes/auth.routes'));
+app.use('/api/profiel',              require('./routes/profiel.routes'));
+app.use('/api/admin',                require('./routes/admin.routes'));
+app.use('/api/admin/verenigingen',   require('./routes/admin.verenigingen.routes'));
 
 // ── Publieke data (mock — later vervangen door echte DB-queries) ──
 app.get('/api/publiek/editie/actief', (_req, res) => {
