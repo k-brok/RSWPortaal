@@ -1,0 +1,15 @@
+{
+  "name": "rsw-portaal",
+  "version": "0.1.0",
+  "description": "RSW Portaal — Regionale Scouting Wedstrijden, Regio De Langstraat",
+  "author": "CHUNKK",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node src/app.js",
+    "start": "NODE_ENV=production node src/app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
