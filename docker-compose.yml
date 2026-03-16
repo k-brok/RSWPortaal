@@ -1,0 +1,61 @@
+services:
+
+  # ── Applicatie ────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: rsw-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      APP_URL: http://localhost:3000
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-rsw_portaal}
+      DB_USER: ${DB_USER:-rsw_user}
+      DB_PASSWORD: ${DB_PASSWORD:-verander_mij}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      GRAPH_TENANT_ID: ${GRAPH_TENANT_ID:-}
+      GRAPH_CLIENT_ID: ${GRAPH_CLIENT_ID:-}
+      GRAPH_CLIENT_SECRET: ${GRAPH_CLIENT_SECRET:-}
+      GRAPH_SENDER_EMAIL: ${GRAPH_SENDER_EMAIL:-}
+      QR_TOKEN_SECRET: ${QR_TOKEN_SECRET}
+      QR_DEFAULT_EXPIRY_MINUTES: 120
+      BCRYPT_ROUNDS: 12
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rsw-net
+
+  # ── Database ──────────────────────────────────────────────────
+  db:
+    image: mariadb:11
+    container_name: rsw-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root_verander_mij
+      MARIADB_DATABASE: ${DB_NAME:-rsw_portaal}
+      MARIADB_USER: ${DB_USER:-rsw_user}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-verander_mij}
+    ports:
+      - "3306:3306"     # optioneel: bereikbaar vanuit host voor DB-client
+    volumes:
+      - .docker-data/db:/var/lib/mysql
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro   # migrations worden eenmalig uitgevoerd bij eerste start
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rsw-net
+
+networks:
+  rsw-net:
+    driver: bridge

@@ -1,7 +1,7 @@
 // header.js — Header component
 
 import { isLoggedIn, getUser, logout } from '../services/auth.js';
-import { navigate } from '../app.js';
+import { navigate } from '../utils/router.js';
 
 export function renderHeader() {
   const el = document.getElementById('header');

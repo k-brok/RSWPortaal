@@ -222,6 +222,7 @@ h4 { font-size: 1rem; font-weight: 600; }
   }
 }
 
+
 @media (max-width: 480px) {
   #sidebar {
     width: 0;

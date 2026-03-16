@@ -1,7 +1,7 @@
 // api.js — Centrale API-service met automatische token-refresh bij 401
 
 import { getAccessToken, refreshToken, clearUser } from './auth.js';
-import { navigate } from '../app.js';
+import { navigate } from '../utils/router.js';
 
 // Werkt zowel bij directe toegang (/) als via Code-Server proxy (/proxy/3000/)
 function apiBase() {
@@ -47,6 +47,12 @@ export const api = {
   patch:  (path, body)   => request('PATCH', path, body),
   delete: (path)         => request('DELETE', path),
 };
+
+// Named exports voor directe import: import { get, post } from '../services/api.js'
+export const get    = (path)       => request('GET',    path);
+export const post   = (path, body) => request('POST',   path, body);
+export const put    = (path, body) => request('PUT',    path, body);
+export const del    = (path)       => request('DELETE', path);
 
 // ── Publieke endpoints (geen auth vereist) ────────────────────────
 

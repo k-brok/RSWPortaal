@@ -178,6 +178,17 @@ function buildRolNav() {
     `);
   }
 
+  // Profiel — altijd zichtbaar als ingelogd
+  sections.push(`
+    <div class="nav-group">
+      <div class="nav-group-label">Account</div>
+      <a href="#/profiel" class="nav-item" data-route="/profiel">
+        <span class="nav-item-icon">&#128100;</span>
+        <span class="nav-item-label">Mijn profiel</span>
+      </a>
+    </div>
+  `);
+
   return sections.join('');
 }
 
