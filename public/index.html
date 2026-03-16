@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RSW Portaal — Regio De Langstraat</title>
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body class="dark-theme">
+
+  <!-- App shell -->
+  <div id="app">
+
+    <header id="header"></header>
+
+    <div class="layout-body">
+      <aside id="sidebar"></aside>
+      <main id="content" class="content-area">
+        <!-- Pagina-inhoud wordt hier geladen door de router -->
+        <div class="page-loading">
+          <div class="spinner"></div>
+        </div>
+      </main>
+    </div>
+
+    <footer id="footer"></footer>
+
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
