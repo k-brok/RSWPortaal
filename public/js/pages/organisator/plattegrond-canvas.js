@@ -145,7 +145,7 @@ export class PlattegrondCanvas {
     // Achtergrond (schermruimte)
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#12122a';
+    ctx.fillStyle = '#f0f4f8';
     ctx.fillRect(0, 0, W, H);
 
     // Canvasinhoud (zoom + pan)
@@ -190,9 +190,9 @@ export class PlattegrondCanvas {
     ctx.shadowBlur    = 14;
     ctx.shadowOffsetY = 5;
 
-    // Celachtergrond
-    ctx.fillStyle = kleur + '88';
-    ctx.fillRect(gx, gy, vw, vh);
+    // Celachtergrond (afgerond, solid kleur zoals in RSWSysteem)
+    ctx.beginPath(); ctx.roundRect(gx, gy, vw, vh, 5);
+    ctx.fillStyle = kleur; ctx.fill();
 
     ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
@@ -205,16 +205,15 @@ export class PlattegrondCanvas {
     ctx.restore();
 
     // Rand (highlight)
-    ctx.strokeStyle = 'rgba(120,190,255,0.9)';
-    ctx.lineWidth   = 2;
-    ctx.strokeRect(gx + 0.5, gy + 0.5, vw - 1, vh - 1);
+    ctx.beginPath(); ctx.roundRect(gx + 0.5, gy + 0.5, vw - 1, vh - 1, 5);
+    ctx.strokeStyle = 'rgba(30,58,95,0.6)'; ctx.lineWidth = 2; ctx.stroke();
 
     ctx.restore();
   }
 
   #drawSnapGrid(W, H) {
     const ctx = this.#ctx, g = this.#snapG;
-    ctx.fillStyle = 'rgba(180,200,255,0.18)';
+    ctx.fillStyle = 'rgba(30,58,95,0.12)';
     for (let x = 0; x < W; x += g)
       for (let y = 0; y < H; y += g)
         ctx.fillRect(x, y, 1.5, 1.5);
@@ -226,11 +225,11 @@ export class PlattegrondCanvas {
     const meter  = 5 * this.#schaalMeter;
     const x = 14, y = H - 14;
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(30,58,95,0.7)'; ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x, y-7); ctx.lineTo(x, y); ctx.lineTo(x+barPx, y); ctx.lineTo(x+barPx, y-7);
     ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillStyle = 'rgba(30,58,95,0.8)';
     ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(`${meter} m`, x + barPx/2, y - 10);
     ctx.restore();
@@ -239,7 +238,7 @@ export class PlattegrondCanvas {
   #drawZoomLabel(W, H) {
     const ctx = this.#ctx;
     ctx.font = '11px sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = 'rgba(30,58,95,0.4)';
     ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
     ctx.fillText(`${Math.round(this.#zoom * 100)}%`, W - 6, H - 6);
   }
@@ -271,67 +270,106 @@ export class PlattegrondCanvas {
       }
     }
 
-    if (cel.type === 'onbruikbaar') {
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(x, y, w, h);
-      ctx.save();
-      ctx.strokeStyle = 'rgba(80,80,80,0.5)'; ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let i = -h; i < w+h; i += 12) { ctx.moveTo(x+i, y); ctx.lineTo(x+i+h, y+h); }
-      ctx.stroke(); ctx.restore();
-    } else {
-      ctx.fillStyle = kleur + (cel.type === 'HQ' ? 'cc' : '88');
-      ctx.fillRect(x, y, w, h);
+    const R = 5; // border-radius (overeenkomstig RSWSysteem)
 
-      // Preview-tint op doelcel
+    // Helper: afgerond rechthoek pad
+    const rr = (bx, by, bw, bh, br) => { ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, br); };
+
+    if (cel.type === 'onbruikbaar') {
+      // Lichtgrijs, semi-transparant — geen diagonale strepen
+      ctx.globalAlpha = 0.5;
+      rr(x, y, w, h, R); ctx.fillStyle = '#e2e8f0'; ctx.fill();
+      ctx.globalAlpha = 1;
+      rr(x, y, w, h, R); ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.5; ctx.stroke();
+    } else {
+      const heeftPatrouille = cel.patrouille_id != null || previewPatId != null;
+
+      if (cel.type === 'HQ' || (sub && heeftPatrouille)) {
+        // Solid subkamp-kleur
+        rr(x, y, w, h, R); ctx.fillStyle = kleur; ctx.fill();
+      } else if (sub) {
+        // Cel in subkamp maar nog geen patrouille → licht, gestippelde rand
+        rr(x, y, w, h, R); ctx.fillStyle = kleur + '22'; ctx.fill();
+      } else {
+        // Geen subkamp → lege witte cel
+        rr(x, y, w, h, R); ctx.fillStyle = '#f8fafc'; ctx.fill();
+      }
+
+      // Preview-tint op doelcel bij drag
       const isPreviewDoel = cel.type === 'wedstrijd' && isHover && previewPatId !== cel.patrouille_id
         && (this.#indelingDragGesleept || this.#pendingDrag?.type === 'patrouille');
       if (isPreviewDoel) {
-        ctx.fillStyle = 'rgba(80,210,120,0.22)';
-        ctx.fillRect(x, y, w, h);
+        rr(x, y, w, h, R); ctx.fillStyle = 'rgba(34,197,94,0.25)'; ctx.fill();
       }
 
       if (this.#tonenScores && cel.patrouille_id != null) {
         const sc = Math.min(this.#scores[cel.patrouille_id] ?? 0, 100) / 100;
-        ctx.fillStyle = `rgba(${Math.round(255*(1-sc))},${Math.round(200*sc)},0,0.42)`;
-        ctx.fillRect(x, y, w, h);
+        rr(x, y, w, h, R);
+        ctx.fillStyle = `rgba(${Math.round(255*(1-sc))},${Math.round(200*sc)},0,0.38)`;
+        ctx.fill();
       }
 
       if (cel.type === 'HQ') {
-        const fs = Math.max(9, Math.min(w, h) * 0.3);
+        // Stafpost-stijl: "HQ" tekst + ster rechts-boven
+        const fs = Math.max(9, Math.min(w, h) * 0.28);
         ctx.font = `bold ${fs}px sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        ctx.fillText('HQ', x+w/2, y+h/2);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillText('HQ', x + w/2, y + h/2);
+        // Ster rechts-boven (zoals staff-post in RSWSysteem)
+        const sfs = Math.max(8, Math.min(12, Math.min(w,h) * 0.22));
+        ctx.font = `${sfs}px sans-serif`;
+        ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillText('\u2605', x + w - 3, y + 3);
       } else {
         this.#drawCelTekst(cel, x, y, w, h, previewPatId);
       }
 
-      // Jongste-badge: gouden ster rechts-boven, alleen als toegewezen patrouille jongste is
+      // Jongste-badge: gouden ster rechts-boven
       const previewPat = previewPatId != null ? this.#patrouilles.find(p => p.id === previewPatId) : null;
-      if (previewPat?.jongste) {
+      if (previewPat?.jongste && cel.type !== 'HQ') {
         const fs = Math.max(8, Math.min(11, Math.min(w, h) * 0.22));
         ctx.font = `${fs}px sans-serif`;
         ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-        ctx.fillStyle = 'rgba(255,215,0,0.92)';
+        ctx.fillStyle = 'rgba(255,215,0,0.95)';
         ctx.fillText('\u2605', x + w - 3, y + 3);
       }
     }
 
-    if (isGeselEdit) { ctx.fillStyle = 'rgba(100,200,255,0.18)'; ctx.fillRect(x, y, w, h); }
+    if (isGeselEdit) {
+      rr(x, y, w, h, R); ctx.fillStyle = 'rgba(59,130,246,0.15)'; ctx.fill();
+    }
 
-    // Rand: gestippeld op broncel, normaal/highlight op rest
+    // Rand
     if (isDragBron) {
       ctx.save();
       ctx.setLineDash([4, 3]);
-      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x+0.5, y+0.5, w-1, h-1);
+      rr(x+0.5, y+0.5, w-1, h-1, R);
+      ctx.strokeStyle = 'rgba(100,160,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.restore();
-    } else {
-      ctx.strokeStyle = isGesel ? '#f5e642' : isGeselEdit ? '#64c8ff' : isHover ? '#e0e0e0' : 'rgba(255,255,255,0.28)';
-      ctx.lineWidth   = (isGesel || isGeselEdit || isHover) ? 2.5 : 1;
-      ctx.strokeRect(x+0.5, y+0.5, w-1, h-1);
+    } else if (cel.type !== 'onbruikbaar') {
+      // Lege actieve cel zonder subkamp of zonder patrouille → gestippeld
+      const leeg = !sub || (cel.type === 'wedstrijd' && !sub);
+      const heeftPat = previewPatId != null || cel.patrouille_id != null;
+      ctx.save();
+      if (!heeftPat && cel.type !== 'HQ') ctx.setLineDash([4, 3]);
+      rr(x+0.5, y+0.5, w-1, h-1, R);
+      if (isGesel) {
+        ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3;
+      } else if (isGeselEdit) {
+        ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5;
+      } else if (isHover) {
+        ctx.strokeStyle = '#1e3a5f'; ctx.lineWidth = 2.5;
+      } else if (cel.type === 'HQ') {
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 3;
+      } else if (sub && heeftPat) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1;
+      } else {
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
+      }
+      ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -347,7 +385,7 @@ export class PlattegrondCanvas {
       const nrFs = Math.max(7, Math.min(11, Math.min(w, h) * 0.18));
       ctx.font = `bold ${nrFs}px sans-serif`;
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
       ctx.fillText(String(cel.nummer), x + 3, y + 3);
     }
 
