@@ -231,4 +231,58 @@ router.delete('/deelnemers/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// ── Scorekaart data (voor PDF-export bij prijsuitreiking) ─────────
+
+router.get('/patrouilles/:id/scorekaart', async (req, res) => {
+  try {
+    const patrouilleId = Number(req.params.id);
+    const p = await patModel.vindOpId(patrouilleId);
+    if (!p) return res.status(404).json({ message: 'Niet gevonden' });
+
+    if (req.gebruiker.rol === 'leiding' && p.groep_id !== req.gebruiker.groep_id)
+      return res.status(403).json({ message: 'Geen toegang' });
+
+    const editie = await editieModel.vindOpId(p.editie_id);
+    if (!editie) return res.status(404).json({ message: 'Editie niet gevonden' });
+
+    if (editie.lsw_datum) {
+      p.deelnemers = p.deelnemers.map(d => ({
+        ...d,
+        leeftijd_lsw: patModel.berekenLeeftijd(d.geboortedatum, editie.lsw_datum),
+      }));
+    }
+
+    const juryModel = require('../models/jury.model');
+    const { resultaten } = await juryModel.berekenUitslagen(editie.id, false);
+    const uitslag = resultaten.find(u => u.patrouille_id === patrouilleId) || null;
+
+    res.json({
+      patrouille: {
+        id:                 p.id,
+        naam:               p.naam,
+        groep_naam:         uitslag?.groep_naam ?? p.groep_naam ?? null,
+        vereniging_naam:    uitslag?.vereniging_naam ?? null,
+        jongste:            !!p.jongste,
+        buiten_mededinging: !!p.buiten_mededinging,
+        bm_label:           editie.bm_label ?? null,
+        deelnemers:         p.deelnemers,
+        nummer:             uitslag?.nummer ?? null,
+        subkamp:            uitslag?.subkamp ?? null,
+        positie:            uitslag?.positie ?? null,
+        jongste_positie:    uitslag?.jongste_positie ?? null,
+        eindscore:          uitslag?.eindscore ?? null,
+        categorieScores:    uitslag?.categorieScores ?? [],
+      },
+      editie: {
+        id:                     editie.id,
+        naam:                   editie.naam,
+        jaar:                   editie.jaar,
+        lsw_datum:              editie.lsw_datum,
+        locatie:                editie.locatie ?? null,
+        uitslagen_gepubliceerd: !!editie.uitslagen_gepubliceerd,
+      },
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 module.exports = router;
