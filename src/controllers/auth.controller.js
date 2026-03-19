@@ -1,9 +1,12 @@
 // src/controllers/auth.controller.js — Registratie, login, logout, refresh, verificatie
 
-const bcrypt      = require('bcrypt');
-const authService = require('../services/auth.service');
-const mailService = require('../services/mail.service');
+const bcrypt         = require('bcrypt');
+const authService    = require('../services/auth.service');
+const mailService    = require('../services/mail.service');
 const gebruikerModel = require('../models/gebruiker.model');
+const aanvraagModel  = require('../models/aanvraag.model');
+const vrijwModel     = require('../models/vrijwilliger.model');
+const editieModel    = require('../models/editie.model');
 
 const BCRYPT_ROUNDS  = Number(process.env.BCRYPT_ROUNDS) || 12;
 const COOKIE_OPTIES  = {
@@ -15,15 +18,16 @@ const COOKIE_OPTIES  = {
 };
 
 function stuurTokens(res, gebruiker, refreshToken) {
-  const payload = { id: gebruiker.id, naam: gebruiker.naam, email: gebruiker.email, rol: gebruiker.rol, groep: gebruiker.groep ?? null };
+  const payload = { id: gebruiker.id, naam: gebruiker.naam, email: gebruiker.email, rol: gebruiker.rol, groep: gebruiker.groep ?? null, groep_id: gebruiker.groep_id ?? null };
   const accessToken = authService.signAccessToken(payload);
   res.cookie('rsw_refresh', refreshToken, COOKIE_OPTIES);
   return { accessToken, user: payload };
 }
 
 // POST /api/auth/registreer
+// Body: { naam, email, wachtwoord, rol?, groep_id?, vacature_id?, opmerking? }
 async function registreer(req, res) {
-  const { naam, email, wachtwoord } = req.body;
+  const { naam, email, wachtwoord, rol, groep_id, vacature_id, opmerking } = req.body;
   if (!naam?.trim() || !email?.trim() || !wachtwoord) {
     return res.status(400).json({ message: 'Naam, e-mail en wachtwoord zijn verplicht' });
   }
@@ -31,15 +35,57 @@ async function registreer(req, res) {
     return res.status(400).json({ message: 'Wachtwoord moet minimaal 8 tekens zijn' });
   }
 
+  const gekozenRol = ['leiding', 'vrijwilliger'].includes(rol) ? rol : 'leiding';
+
   try {
     const hash  = await bcrypt.hash(wachtwoord, BCRYPT_ROUNDS);
     const token = authService.generateToken();
+
     const gebruiker = await gebruikerModel.aanmaken({
       naam: naam.trim(), email: email.toLowerCase().trim(),
-      wachtwoord_hash: hash, rol: 'leiding',
+      wachtwoord_hash: hash, rol: gekozenRol,
     });
+
     await gebruikerModel.verificatieTokenZetten(gebruiker.id, token);
     await mailService.stuurVerificatieMail(email, naam, token);
+
+    // ── Rol-specifieke aanvraag aanmaken ──────────────────────────
+    const organisatoren = await aanvraagModel.alleOrganisatoren();
+
+    if (gekozenRol === 'leiding' && groep_id) {
+      await aanvraagModel.aanmaken(gebruiker.id, Number(groep_id), opmerking ?? null);
+
+      // Notificeer alle organisatoren
+      const groepen = await gebruikerModel.alleGroepen();
+      const groep = groepen.find(g => g.id === Number(groep_id));
+      const groepLabel = groep?.naam ?? `Groep #${groep_id}`;
+
+      for (const org of organisatoren) {
+        await mailService.stuurNieuweAanvraagMail(
+          org.email, naam, 'leiding', `Wil leiding worden bij: ${groepLabel}`
+        ).catch(e => console.error('Notificatiemail mislukt:', e.message));
+      }
+    }
+
+    if (gekozenRol === 'vrijwilliger') {
+      // Maak een vrijwilliger-inschrijving aan als er een actieve editie is
+      const editie = await editieModel.actieveEditie().catch(() => null);
+      if (editie) {
+        await vrijwModel.aanmelden(editie.id, gebruiker.id, {
+          vacature_id: vacature_id ? Number(vacature_id) : null,
+          opmerking: opmerking ?? null,
+        }).catch(() => {}); // Stil falen als inschrijving niet mogelijk is
+      }
+
+      // Notificeer alle organisatoren
+      for (const org of organisatoren) {
+        await mailService.stuurNieuweAanvraagMail(
+          org.email, naam, 'vrijwilliger',
+          vacature_id ? `Heeft interesse in vacature #${vacature_id}` : null
+        ).catch(e => console.error('Notificatiemail mislukt:', e.message));
+      }
+    }
+
     res.status(201).json({ message: 'Account aangemaakt. Controleer je e-mail om te bevestigen.' });
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Dit e-mailadres is al in gebruik.' });
@@ -131,7 +177,8 @@ async function wachtwoordReset(req, res) {
   const hash = await bcrypt.hash(wachtwoord, BCRYPT_ROUNDS);
   await gebruikerModel.wachtwoordBijwerken(gebruiker.id, hash);
   await gebruikerModel.resetTokenWissen(gebruiker.id);
-  // Invalideer alle actieve sessies na wachtwoord-reset
+  // Activeer account (voor uitnodigingsflow) en invalideer sessies
+  await require('../config/db').execute('UPDATE gebruikers SET geverifieerd=1 WHERE id=?', [gebruiker.id]);
   await authService.verwijderAlleRefreshTokens(gebruiker.id);
   res.json({ message: 'Wachtwoord succesvol gewijzigd. Je kunt nu inloggen.' });
 }

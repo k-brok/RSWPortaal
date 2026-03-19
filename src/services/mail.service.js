@@ -129,24 +129,72 @@ async function stuurEmailWijzigMail(aan, naam, token) {
   });
 }
 
-async function stuurWelkomMail(aan, naam, tijdelijkWachtwoord) {
-  const link = `${APP_URL}/#/login`;
+async function stuurUitnodigingsMail(aan, naam, token) {
+  const link = `${APP_URL}/#/uitnodiging?token=${token}`;
   await stuurMail({
     aan,
-    onderwerp: 'Welkom bij RSW Portaal — jouw account is aangemaakt',
+    onderwerp: 'Welkom bij RSW Portaal — activeer je account',
     html: baseTemplate(`
       <p>Hallo <strong>${naam}</strong>,</p>
-      <p>Er is een account voor je aangemaakt in het RSW Portaal.</p>
-      <table style="background:#0f3460;border-radius:8px;padding:16px;margin:16px 0">
-        <tr><td style="color:#9e9e9e;padding:4px 12px 4px 0">E-mail</td><td><strong>${aan}</strong></td></tr>
-        <tr><td style="color:#9e9e9e;padding:4px 12px 4px 0">Wachtwoord</td><td><strong>${tijdelijkWachtwoord}</strong></td></tr>
-      </table>
-      <a href="${link}" style="display:inline-block;background:#e94560;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">Inloggen</a>
-      <p style="color:#9e9e9e;font-size:13px">Wijzig je wachtwoord na de eerste keer inloggen.</p>`),
+      <p>Er is een account voor je aangemaakt in het RSW Portaal. Klik op de knop hieronder om je account te activeren en een eigen wachtwoord in te stellen.</p>
+      <a href="${link}" style="display:inline-block;background:#e94560;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">Account activeren</a>
+      <p style="color:#9e9e9e;font-size:13px">Deze link is 7 dagen geldig. Heb je geen account aangevraagd? Dan kun je deze mail negeren.</p>`),
+  });
+}
+
+
+// Notificatie naar organisatoren bij nieuwe aanvraag
+async function stuurNieuweAanvraagMail(aan, aanvragerNaam, type, extra) {
+  const typeLabel = type === 'leiding' ? 'leiding' : 'vrijwilliger';
+  const extraRegel = extra ? `<p><strong>Details:</strong> ${extra}</p>` : '';
+  await stuurMail({
+    aan,
+    onderwerp: `Nieuwe ${typeLabel}-aanvraag — RSW Portaal`,
+    html: baseTemplate(`
+      <p>Er is een nieuwe aanvraag binnengekomen.</p>
+      <p><strong>Naam:</strong> ${aanvragerNaam}</p>
+      <p><strong>Type:</strong> ${typeLabel}</p>
+      ${extraRegel}
+      <a href="${APP_URL}/#/organisator/aanvragen"
+         style="display:inline-block;background:#e94560;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
+        Aanvraag bekijken
+      </a>`),
+  });
+}
+
+// Bevestiging naar aanvrager: goedgekeurd
+async function stuurAanvraagGoedgekeurdMail(aan, naam, rolOfGroep) {
+  await stuurMail({
+    aan,
+    onderwerp: 'Je aanvraag is goedgekeurd — RSW Portaal',
+    html: baseTemplate(`
+      <p>Hallo <strong>${naam}</strong>,</p>
+      <p>Goed nieuws! Je aanvraag is goedgekeurd.</p>
+      <p><strong>Toegewezen:</strong> ${rolOfGroep}</p>
+      <p>Je kunt nu inloggen en aan de slag.</p>
+      <a href="${APP_URL}/#/login"
+         style="display:inline-block;background:#e94560;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
+        Inloggen
+      </a>`),
+  });
+}
+
+// Notificatie naar aanvrager: afgewezen
+async function stuurAanvraagAfgewezenMail(aan, naam, type, reden = null) {
+  const redenRegel = reden ? `<p><strong>Reden:</strong> ${reden}</p>` : '';
+  await stuurMail({
+    aan,
+    onderwerp: 'Je aanvraag is niet goedgekeurd — RSW Portaal',
+    html: baseTemplate(`
+      <p>Hallo <strong>${naam}</strong>,</p>
+      <p>Helaas is je aanvraag als <strong>${type}</strong> niet goedgekeurd.</p>
+      ${redenRegel}
+      <p style="color:#9e9e9e;font-size:13px">Heb je vragen? Neem contact op met de organisatie.</p>`),
   });
 }
 
 module.exports = {
   stuurMail, stuurVerificatieMail, stuurWachtwoordResetMail,
-  stuurEmailWijzigMail, stuurWelkomMail,
+  stuurEmailWijzigMail, stuurUitnodigingsMail,
+  stuurNieuweAanvraagMail, stuurAanvraagGoedgekeurdMail, stuurAanvraagAfgewezenMail,
 };

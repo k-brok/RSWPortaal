@@ -34,19 +34,31 @@
   box-shadow: var(--shadow-md);
 }
 
+.btn-accent {
+  background: var(--color-accent);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+.btn-accent:hover {
+  background: var(--color-accent-dark);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
 .btn-secondary {
   background: var(--color-surface-alt);
   color: var(--color-text);
+  border: 1px solid var(--color-border);
 }
 .btn-secondary:hover {
-  background: #1a4a80;
+  background: #d5deea;
   color: var(--color-text);
   box-shadow: var(--shadow-sm);
 }
 
 .btn-ghost {
   background: transparent;
-  color: var(--color-text);
+  color: var(--color-text-muted);
   border: 1px solid var(--color-border);
 }
 .btn-ghost:hover {
@@ -160,12 +172,13 @@
   letter-spacing: 0.04em;
 }
 
-.badge-primary { background: rgba(233,69,96,0.18); color: var(--color-primary); }
-.badge-success { background: rgba(76,175,80,0.18); color: var(--color-success); }
-.badge-warning { background: rgba(255,152,0,0.18); color: var(--color-warning); }
-.badge-error   { background: rgba(244,67,54,0.18); color: var(--color-error); }
-.badge-info    { background: rgba(33,150,243,0.18); color: var(--color-info); }
-.badge-muted   { background: rgba(158,158,158,0.15); color: var(--color-text-muted); }
+.badge-primary { background: rgba(30,58,95,0.1);  color: var(--color-primary); }
+.badge-accent  { background: rgba(232,160,32,0.15); color: #92680a; }
+.badge-success { background: rgba(34,197,94,0.12); color: #15803d; }
+.badge-warning { background: rgba(245,158,11,0.12); color: #92400e; }
+.badge-error   { background: rgba(239,68,68,0.12); color: #991b1b; }
+.badge-info    { background: rgba(59,130,246,0.12); color: #1d4ed8; }
+.badge-muted   { background: rgba(107,125,144,0.12); color: var(--color-text-muted); }
 
 /* ── Ranglijst / top 10 ── */
 .ranking-list {
@@ -407,10 +420,50 @@
   font-size: 1.5rem;
 }
 
+.header-center {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
 .header-right {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* ── Editie-switcher ── */
+.editie-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  transition: background var(--transition), border-color var(--transition);
+  user-select: none;
+}
+
+.editie-switcher:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-primary);
+}
+
+.editie-dropdown {
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+}
+
+.dropdown-item-active {
+  background: var(--color-surface-alt);
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
 .user-menu {
@@ -507,15 +560,16 @@
 }
 
 .nav-item:hover {
-  color: var(--color-text);
+  color: var(--color-primary);
   background: var(--color-surface-alt);
   border-left-color: var(--color-border);
 }
 
 .nav-item.active {
   color: var(--color-primary);
-  background: rgba(233, 69, 96, 0.08);
-  border-left-color: var(--color-primary);
+  background: rgba(30, 58, 95, 0.07);
+  border-left-color: var(--color-accent);
+  font-weight: 600;
 }
 
 .nav-item-icon {
@@ -542,13 +596,14 @@
 
 /* ── Hero sectie ── */
 .hero {
-  background: linear-gradient(135deg, var(--color-surface-alt) 0%, var(--color-surface) 100%);
-  border: 1px solid var(--color-border);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #2d5986 100%);
+  border: none;
   border-radius: var(--radius-lg);
   padding: 40px 32px;
   margin-bottom: 24px;
   position: relative;
   overflow: hidden;
+  color: #fff;
 }
 
 .hero::before {
@@ -558,8 +613,20 @@
   right: -10%;
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(233,69,96,0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(232,160,32,0.2) 0%, transparent 70%);
   pointer-events: none;
+}
+
+.hero .hero-subtitle {
+  color: rgba(255,255,255,0.75);
+}
+
+.hero .hero-meta-item {
+  color: rgba(255,255,255,0.7);
+}
+
+.hero .hero-meta-item strong {
+  color: #fff;
 }
 
 .hero-title {
@@ -634,10 +701,10 @@
 }
 
 .alert-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
-.alert-info    { background: rgba(33,150,243,0.1); border: 1px solid rgba(33,150,243,0.25); color: #90caf9; }
-.alert-success { background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.25); color: #a5d6a7; }
-.alert-warning { background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.25); color: #ffcc80; }
-.alert-error   { background: rgba(244,67,54,0.1); border: 1px solid rgba(244,67,54,0.25); color: #ef9a9a; }
+.alert-info    { background: #eff6ff; border-left: 3px solid var(--color-info);    color: #1d4ed8; }
+.alert-success { background: #f0fdf4; border-left: 3px solid var(--color-success); color: #15803d; }
+.alert-warning { background: #fffbeb; border-left: 3px solid var(--color-warning); color: #92400e; }
+.alert-error   { background: #fef2f2; border-left: 3px solid var(--color-error);   color: #991b1b; }
 
 /* ── Divider ── */
 .divider {
@@ -792,6 +859,84 @@
   font-weight: 600;
 }
 
+/* ── Ontbrekende knop varianten ── */
+.btn-danger {
+  background: var(--color-error);
+  color: #fff;
+  border: none;
+}
+.btn-danger:hover {
+  background: #dc2626;
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-success {
+  background: var(--color-success);
+  color: #fff;
+  border: none;
+}
+.btn-success:hover {
+  background: #16a34a;
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-warning {
+  background: var(--color-warning);
+  color: #fff;
+  border: none;
+}
+.btn-warning:hover {
+  background: #d97706;
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+.btn-outline:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Pagina header helpers ── */
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.page-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0;
+}
+
+/* ── Loading spinner alias ── */
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
 /* ── Formulier elementen ── */
 .form-group {
   margin-bottom: 18px;
@@ -830,6 +975,21 @@
   outline: none;
 }
 
+.form-input-sm {
+  padding: 5px 10px;
+  font-size: 0.82rem;
+}
+
+select.form-input-sm {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%236b7d90' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
 .form-input::placeholder {
   color: var(--color-text-muted);
   opacity: 0.7;
@@ -837,12 +997,12 @@
 
 .form-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
 }
 
 .form-input.error {
   border-color: var(--color-error);
-  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
 }
 
 .form-hint {
@@ -853,6 +1013,147 @@
 
 .form-hint.error {
   color: var(--color-error);
+}
+
+/* ── Bootstrap-aliassen — voor achterwaartse compatibiliteit ── */
+.form-control,
+.form-control-sm {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+
+.form-control-sm { padding: 6px 10px; font-size: 0.82rem; }
+
+.form-control:focus,
+.form-control-sm:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
+}
+
+select.form-control,
+select.form-control-sm {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%236b7d90' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+textarea.form-control { resize: vertical; min-height: 96px; line-height: 1.6; }
+
+/* Ghost + danger combinatie = outline danger */
+.btn-ghost.btn-danger {
+  background: transparent;
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+.btn-ghost.btn-danger:hover {
+  background: var(--color-error);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Select — ziet er exact uit als een text input ── */
+select.form-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%236b7d90' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+select.form-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
+}
+
+/* ── Textarea ── */
+textarea.form-input {
+  resize: vertical;
+  min-height: 96px;
+  line-height: 1.6;
+}
+
+/* ── Number input — verberg browser spinner ── */
+input[type="number"].form-input::-webkit-inner-spin-button,
+input[type="number"].form-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"].form-input { -moz-appearance: textfield; }
+
+/* ── Checkbox & radio ── */
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  user-select: none;
+  margin-bottom: 8px;
+}
+
+.form-check:last-child { margin-bottom: 0; }
+
+.form-check input[type="checkbox"],
+.form-check input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+/* Losse checkbox/radio (buiten .form-check) — minimale reset */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* ── Input group (tekst + knop naast elkaar) ── */
+.input-group {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.input-group .form-input {
+  flex: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+}
+
+.input-group .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  white-space: nowrap;
+}
+
+/* ── Form row (twee inputs naast elkaar) ── */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .form-row { grid-template-columns: 1fr; }
 }
 
 .input-with-icon {
@@ -1064,6 +1365,31 @@ table.data-table {
   gap: 10px;
   padding: 16px 24px 20px;
   border-top: 1px solid var(--color-border);
+}
+
+/* ── Profiel key-value lijst ── */
+.profiel-dl { display: flex; flex-direction: column; gap: 0; }
+
+.profiel-dl-rij {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  align-items: baseline;
+}
+
+.profiel-dl-rij:last-child { border-bottom: none; }
+
+.profiel-dl-rij dt {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.profiel-dl-rij dd {
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 /* ── Confirm dialog ── */
