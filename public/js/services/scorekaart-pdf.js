@@ -26,6 +26,12 @@ export async function drukAlleScorekaarten(patrouilleIds, onProgress) {
     datasets.push(await get(`/inschrijving/patrouilles/${id}/scorekaart`));
     onProgress?.(datasets.length);
   }
+  datasets.sort((a, b) => {
+    const pA = a.patrouille.positie ?? 9999;
+    const pB = b.patrouille.positie ?? 9999;
+    if (pA !== pB) return pA - pB;
+    return String(a.patrouille.nummer ?? '').localeCompare(String(b.patrouille.nummer ?? ''), 'nl', { numeric: true });
+  });
   const editieNaam = (datasets[0]?.editie?.naam ?? 'RSW').replace(/\s+/g, '_');
   pdfMake.createPdf(bouwDoc(datasets)).download(`RSW_Scorekaarten_${editieNaam}.pdf`);
 }
