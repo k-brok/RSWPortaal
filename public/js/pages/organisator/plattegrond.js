@@ -4,6 +4,7 @@
 import { get, put, post, del } from '../../services/api.js';
 import { escapeHtml }          from '../../utils/escape.js';
 import { PlattegrondCanvas }   from './plattegrond-canvas.js';
+import { laadPdfMake }         from '../../services/pdf.js';
 
 const MAX_CANVAS_W = 1600;
 const MAX_CANVAS_H = 1200;
@@ -90,6 +91,8 @@ export async function render() {
           <button class="btn btn-ghost btn-sm" id="btn-zoom-in"    title="Inzoomen">&#43;</button>
           <button class="btn btn-ghost btn-sm" id="btn-zoom-out"   title="Uitzoomen">&#8722;</button>
           <button class="btn btn-ghost btn-sm" id="btn-zoom-reset" title="Zoom resetten">100%</button>
+          <span style="width:1px;height:20px;background:var(--color-border);margin:0 4px"></span>
+          <button class="btn btn-ghost btn-sm" id="btn-print" title="Plattegrond als PDF downloaden">&#128438; PDF</button>
         </div>
 
         <!-- Canvas -->
@@ -626,6 +629,9 @@ function bindUIEvents() {
   document.getElementById('btn-zoom-out').addEventListener('click',   () => canvas.zoomOut());
   document.getElementById('btn-zoom-reset').addEventListener('click', () => canvas.resetZoom());
 
+  // PDF
+  document.getElementById('btn-print').addEventListener('click', printPlattegrond);
+
   // Opacity
   document.getElementById('inp-opacity').addEventListener('input', e => {
     document.getElementById('opacity-waarde').textContent = e.target.value;
@@ -772,6 +778,80 @@ async function slaaNummersOp() {
   sluitNummersModal();
   try { await put(`/plattegrond/${editieId}/cellen`, { cellen }); } catch { /* stil */ }
   updateIndelingKaart();
+}
+
+// ── PDF export ────────────────────────────────────────────────────
+
+async function printPlattegrond() {
+  const btn = document.getElementById('btn-print');
+  btn.disabled = true; btn.textContent = 'Bezig…';
+
+  try {
+    await laadPdfMake();
+
+    const canvasEl = document.getElementById('plat-canvas');
+    const dataUrl  = canvasEl.toDataURL('image/png');
+
+    // A4 liggend bruikbaar: 842 × 595 pt min. 30pt marge elk = 782 × 535 pt
+    const PAGE_W = 782;
+    const PAGE_H = 535;
+    const GAP    = 12;
+    const LEFT_W = 150;
+    const IMG_W  = PAGE_W - LEFT_W - GAP;
+
+    const ratio = Math.min(IMG_W / canvasEl.width, PAGE_H / canvasEl.height, 1);
+    const imgW  = Math.round(canvasEl.width  * ratio);
+    const imgH  = Math.round(canvasEl.height * ratio);
+
+    const linkerKolom = {
+      width: LEFT_W,
+      stack: [
+        { text: 'Plattegrond RSW', style: 'kop' },
+        plattegrond.schaal_meter
+          ? { text: `Schaal: 1 re = ${plattegrond.schaal_meter} m`, style: 'meta', margin: [0, 3, 0, 0] }
+          : {},
+        ...(subkampen.length ? [
+          { text: 'Subkampen', style: 'sectie', margin: [0, 16, 0, 4] },
+          {
+            table: {
+              widths: [14, '*'],
+              body: subkampen.map(s => [
+                {
+                  canvas: [{ type: 'ellipse', x: 7, y: 7, r1: 6, r2: 6, color: s.kleur }],
+                  border: [false, false, false, false],
+                },
+                {
+                  text: s.naam,
+                  fontSize: 9,
+                  border: [false, false, false, false],
+                  margin: [0, 2, 0, 0],
+                },
+              ]),
+            },
+            layout: 'noBorders',
+          },
+        ] : []),
+      ],
+    };
+
+    pdfMake.createPdf({
+      pageOrientation: 'landscape',
+      pageMargins:     [30, 30, 30, 30],
+      content: [{
+        columns: [linkerKolom, { image: dataUrl, width: imgW, height: imgH }],
+        columnGap: GAP,
+      }],
+      styles: {
+        kop:    { fontSize: 13, bold: true },
+        meta:   { fontSize: 8, color: '#555555' },
+        sectie: { fontSize: 9, bold: true, color: '#666666' },
+      },
+    }).download('plattegrond-rsw.pdf');
+  } catch (e) {
+    alert('Fout bij genereren PDF: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🖨 PDF';
+  }
 }
 
 // ── Debounced opslaan ─────────────────────────────────────────────
