@@ -2,7 +2,7 @@
 // Zichtbaar voor iedereen; toont role-specifieke cards voor ingelogde gebruikers.
 
 import { isLoggedIn, getUser, hasRole } from '../services/auth.js';
-import { getActieveEditie, getTop10, getProgramma } from '../services/api.js';
+import { getActieveEditie, getTop10, getProgramma, getVacatures } from '../services/api.js';
 
 // Wordt bijgehouden zodat onDestroy() de interval kan stoppen
 let refreshInterval = null;
@@ -16,15 +16,17 @@ export async function render() {
 
   let top10 = [];
   let programma = [];
+  let vacatures = [];
 
   if (editie) {
-    [top10, programma] = await Promise.all([
+    [top10, programma, vacatures] = await Promise.all([
       getTop10(editie.id),
       getProgramma(editie.id),
+      getVacatures(),
     ]);
   }
 
-  content.innerHTML = buildPage(editie, top10, programma, user, loggedIn);
+  content.innerHTML = buildPage(editie, top10, programma, vacatures, user, loggedIn);
 }
 
 export function onMount() {
@@ -45,7 +47,7 @@ export function onDestroy() {
 
 // ── Pagina opbouw ─────────────────────────────────────────────────
 
-function buildPage(editie, top10, programma, user, loggedIn) {
+function buildPage(editie, top10, programma, vacatures, user, loggedIn) {
   return `
     ${loggedIn ? buildWelcomeCard(user) : ''}
     ${buildHero(editie, loggedIn)}
@@ -54,10 +56,23 @@ function buildPage(editie, top10, programma, user, loggedIn) {
     <div class="dashboard-grid">
       ${buildTop10Card(top10, editie)}
       ${buildProgrammaCard(programma, editie)}
+      ${vacatures.length ? buildVacaturesCard(vacatures, loggedIn) : ''}
       ${loggedIn ? buildRolCards(user) : ''}
       ${buildInfoCard()}
     </div>
   `;
+}
+
+// ── Hulpfunctie fase ──────────────────────────────────────────────
+
+function bepaalFase(editie) {
+  if (!editie) return 'gesloten';
+  const v = new Date().toISOString().slice(0, 10);
+  const viStart = editie.voorinschrijving_start, viSluit = editie.voorinschrijving_sluit;
+  if (viStart && viStart <= v && (!viSluit || viSluit >= v)) return 'voorinschrijving';
+  const iStart = editie.inschrijving_start, iSluit = editie.inschrijving_sluit;
+  if (iStart && iStart <= v && (!iSluit || iSluit >= v)) return 'inschrijving';
+  return 'gesloten';
 }
 
 // ── Hero banner ───────────────────────────────────────────────────
@@ -88,7 +103,8 @@ function buildHero(editie, loggedIn) {
 
       ${!loggedIn ? `
         <div class="hero-actions">
-          <a href="#/registreren" class="btn btn-primary">Inschrijven als leiding</a>
+          <a href="#/registreren?rol=leiding" class="btn btn-primary">Meld je aan als leiding</a>
+          <a href="#/registreren?rol=vrijwilliger" class="btn btn-secondary">Meld je aan als vrijwilliger</a>
           <a href="#/login" class="btn btn-ghost">Inloggen</a>
         </div>
       ` : ''}
@@ -97,7 +113,8 @@ function buildHero(editie, loggedIn) {
         <div class="hero-meta">
           ${datum ? `<div class="hero-meta-item">&#128197; <strong>${datum}</strong></div>` : ''}
           ${locatie ? `<div class="hero-meta-item">&#128205; <strong>${escapeHtml(locatie)}</strong></div>` : ''}
-          ${editie?.inschrijving_open ? `<div class="hero-meta-item"><span class="badge badge-success">Inschrijving open</span></div>` : ''}
+          ${bepaalFase(editie) === 'inschrijving' ? `<div class="hero-meta-item"><span class="badge badge-success">Inschrijving open</span></div>` : ''}
+          ${bepaalFase(editie) === 'voorinschrijving' ? `<div class="hero-meta-item"><span class="badge badge-info">Voorinschrijving open</span></div>` : ''}
         </div>
       ` : ''}
     </div>
@@ -148,35 +165,33 @@ function buildSnelleActies(user) {
 function getActiesVoorRol(rol) {
   const map = {
     leiding: [
-      { href: '#/inschrijving',         icoon: '&#128221;', label: 'Patrouille inschrijven' },
-      { href: '#/mijn-inschrijvingen',  icoon: '&#128203;', label: 'Mijn inschrijvingen' },
-      { href: '#/uitslagen',            icoon: '&#127942;', label: 'Uitslagen bekijken' },
+      { href: '#/inschrijvingen', icoon: '&#128221;', label: 'Inschrijving & eerdere edities' },
+      { href: '#/uitslagen',      icoon: '&#127942;', label: 'Uitslagen bekijken' },
     ],
     vrijwilliger: [
       { href: '#/vrijwilliger/inschrijving', icoon: '&#128170;', label: 'Mijn inschrijving' },
       { href: '#/programma',                 icoon: '&#128197;', label: 'Programma' },
     ],
     jury: [
-      { href: '#/jury/scoreformulier', icoon: '&#128394;&#65039;', label: 'Scores invoeren' },
-      { href: '#/jury/scores',         icoon: '&#128200;',         label: 'Live scores' },
+      { href: '#/scoreformulier', icoon: '&#128394;&#65039;', label: 'Scores invoeren' },
+      { href: '#/scores',         icoon: '&#128200;',         label: 'Live scores' },
     ],
     spelbegeleider: [
-      { href: '#/spelbegeleider/categorie', icoon: '&#128101;', label: 'Mijn categorie' },
-      { href: '#/spelbegeleider/scores',    icoon: '&#128200;', label: 'Live scoretabel' },
+      { href: '#/scoreformulier', icoon: '&#128101;', label: 'Mijn categorie' },
+      { href: '#/scores',         icoon: '&#128200;', label: 'Live scoretabel' },
     ],
     organisator: [
-      { href: '#/organisator/editie',         icoon: '&#127937;',       label: 'Editiebeheer' },
-      { href: '#/organisator/inschrijvingen', icoon: '&#128203;',       label: 'Inschrijvingen' },
-      { href: '#/organisator/plattegrond',    icoon: '&#128205;',       label: 'Plattegrond' },
-      { href: '#/organisator/scores',         icoon: '&#128200;',       label: 'Scorebeheer' },
-      { href: '#/organisator/qr',             icoon: '&#9638;',         label: 'QR-codes' },
+      { href: '#/edities',                 icoon: '&#127937;', label: 'Edities' },
+      { href: '#/inschrijvingen',          icoon: '&#128203;', label: 'Inschrijvingen' },
+      { href: '#/organisator/plattegrond', icoon: '&#128205;', label: 'Plattegrond' },
+      { href: '#/scores',                  icoon: '&#128200;', label: 'Scorebeheer' },
     ],
     admin: [
-      { href: '#/organisator/editie',  icoon: '&#127937;', label: 'Editiebeheer' },
-      { href: '#/admin/gebruikers',    icoon: '&#128100;', label: 'Gebruikers' },
-      { href: '#/admin/verenigingen',  icoon: '&#127960;&#65039;', label: 'Verenigingen' },
-      { href: '#/admin/categorieen',   icoon: '&#127381;', label: 'Categorie-templates' },
-      { href: '#/organisator/scores',  icoon: '&#128200;', label: 'Scorebeheer' },
+      { href: '#/edities',                 icoon: '&#127937;', label: 'Edities' },
+      { href: '#/admin/gebruikers',        icoon: '&#128100;', label: 'Gebruikers' },
+      { href: '#/admin/verenigingen',      icoon: '&#127960;&#65039;', label: 'Verenigingen' },
+      { href: '#/organisator/categorieen', icoon: '&#127381;', label: 'Categorieën' },
+      { href: '#/scores',                  icoon: '&#128200;', label: 'Scorebeheer' },
     ],
   };
   return map[rol] ?? [];
@@ -270,6 +285,56 @@ function buildProgrammaItems(programma) {
   `).join('');
 }
 
+// ── Vacatures card (publiek) ──────────────────────────────────────
+
+function buildVacaturesCard(vacatures, loggedIn) {
+  const rijen = vacatures.map(v => {
+    const vol = v.max_vrijwilligers && Number(v.aanmeldingen) >= Number(v.max_vrijwilligers);
+    const spots = v.max_vrijwilligers
+      ? `${v.aanmeldingen}/${v.max_vrijwilligers}`
+      : `${v.aanmeldingen} aangemeld`;
+    return `
+      <div class="schedule-item" style="align-items:flex-start;">
+        <div class="schedule-time" style="min-width:80px;text-align:center;">
+          ${vol
+            ? '<span class="badge badge-error">Vol</span>'
+            : '<span class="badge badge-success">Open</span>'
+          }
+        </div>
+        <div class="schedule-content" style="flex:1;">
+          <div class="schedule-title">${escapeHtml(v.naam)}</div>
+          ${v.omschrijving ? `<div class="schedule-desc">${escapeHtml(v.omschrijving)}</div>` : ''}
+          <div class="schedule-desc" style="margin-top:4px;">&#128101; ${spots}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="card card-accent-success">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">&#128170;</span>
+          Vrijwilligers gezocht
+        </div>
+        <span class="badge badge-success">${vacatures.length} ${vacatures.length === 1 ? 'vacature' : 'vacatures'}</span>
+      </div>
+      <div class="card-body">
+        <div class="schedule-list">${rijen}</div>
+      </div>
+      ${!loggedIn ? `
+        <div class="card-footer">
+          <a href="#/registreren?rol=vrijwilliger" class="btn btn-primary btn-sm">Aanmelden als vrijwilliger &rarr;</a>
+        </div>
+      ` : `
+        <div class="card-footer">
+          <a href="#/vrijwilliger/inschrijving" class="btn btn-primary btn-sm">Mijn inschrijving &rarr;</a>
+        </div>
+      `}
+    </div>
+  `;
+}
+
 // ── Role-specifieke cards (ingelogd) ─────────────────────────────
 
 function buildRolCards(user) {
@@ -285,8 +350,7 @@ function buildRolCards(user) {
           ${buildLegeStaat('&#128203;', 'Laden...')}
         </div>
         <div class="card-footer">
-          <a href="#/inschrijving" class="btn btn-primary btn-sm">&#43; Patrouille inschrijven</a>
-          <a href="#/mijn-inschrijvingen" class="btn btn-ghost btn-sm">Bekijken</a>
+          <a href="#/inschrijvingen" class="btn btn-primary btn-sm">&#43; Inschrijving</a>
         </div>
       </div>
     `);
@@ -302,7 +366,7 @@ function buildRolCards(user) {
           <p class="text-muted text-sm">Je bent ingedeeld als jurylid. Ga naar het scoreformulier om scores in te voeren.</p>
         </div>
         <div class="card-footer">
-          <a href="#/jury/scoreformulier" class="btn btn-primary btn-sm">Scoreformulier openen</a>
+          <a href="#/scoreformulier" class="btn btn-primary btn-sm">Scoreformulier openen</a>
         </div>
       </div>
     `);
@@ -318,8 +382,8 @@ function buildRolCards(user) {
           <p class="text-muted text-sm">Bekijk de live scores van alle patrouilles in jouw categorie.</p>
         </div>
         <div class="card-footer">
-          <a href="#/spelbegeleider/categorie" class="btn btn-primary btn-sm">Naar mijn categorie</a>
-          <a href="#/spelbegeleider/scores" class="btn btn-ghost btn-sm">Live scores</a>
+          <a href="#/scoreformulier" class="btn btn-primary btn-sm">Naar mijn categorie</a>
+          <a href="#/scores" class="btn btn-ghost btn-sm">Live scores</a>
         </div>
       </div>
     `);
@@ -338,9 +402,9 @@ function buildRolCards(user) {
           </div>
         </div>
         <div class="card-footer">
-          <a href="#/organisator/editie" class="btn btn-primary btn-sm">&#127937; Editiebeheer</a>
-          <a href="#/organisator/inschrijvingen" class="btn btn-ghost btn-sm">Inschrijvingen</a>
-          <a href="#/organisator/scores" class="btn btn-ghost btn-sm">Scorebeheer</a>
+          <a href="#/edities" class="btn btn-primary btn-sm">&#127937; Edities</a>
+          <a href="#/inschrijvingen" class="btn btn-ghost btn-sm">Inschrijvingen</a>
+          <a href="#/scores" class="btn btn-ghost btn-sm">Scorebeheer</a>
         </div>
       </div>
     `);

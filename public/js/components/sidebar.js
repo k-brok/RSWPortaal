@@ -54,17 +54,13 @@ function buildRolNav() {
     sections.push(`
       <div class="nav-group">
         <div class="nav-group-label">Mijn groep</div>
-        <a href="#/dashboard" class="nav-item" data-route="/dashboard">
+        <a href="#/" class="nav-item" data-route="/">
           <span class="nav-item-icon">&#9699;</span>
           <span class="nav-item-label">Dashboard</span>
         </a>
-        <a href="#/inschrijving" class="nav-item" data-route="/inschrijving">
+        <a href="#/inschrijvingen" class="nav-item" data-route="/inschrijvingen">
           <span class="nav-item-icon">&#128221;</span>
           <span class="nav-item-label">Inschrijving</span>
-        </a>
-        <a href="#/mijn-inschrijvingen" class="nav-item" data-route="/mijn-inschrijvingen">
-          <span class="nav-item-icon">&#128203;</span>
-          <span class="nav-item-label">Mijn inschrijvingen</span>
         </a>
       </div>
     `);
@@ -74,7 +70,7 @@ function buildRolNav() {
     sections.push(`
       <div class="nav-group">
         <div class="nav-group-label">Vrijwilliger</div>
-        <a href="#/dashboard" class="nav-item" data-route="/dashboard">
+        <a href="#/" class="nav-item" data-route="/">
           <span class="nav-item-icon">&#9699;</span>
           <span class="nav-item-label">Dashboard</span>
         </a>
@@ -90,15 +86,15 @@ function buildRolNav() {
     sections.push(`
       <div class="nav-group">
         <div class="nav-group-label">Jury</div>
-        <a href="#/dashboard" class="nav-item" data-route="/dashboard">
+        <a href="#/" class="nav-item" data-route="/">
           <span class="nav-item-icon">&#9699;</span>
           <span class="nav-item-label">Dashboard</span>
         </a>
-        <a href="#/jury/scoreformulier" class="nav-item" data-route="/jury/scoreformulier">
+        <a href="#/scoreformulier" class="nav-item" data-route="/scoreformulier">
           <span class="nav-item-icon">&#128394;&#65039;</span>
           <span class="nav-item-label">Scoreformulier</span>
         </a>
-        <a href="#/jury/scores" class="nav-item" data-route="/jury/scores">
+        <a href="#/scores" class="nav-item" data-route="/scores">
           <span class="nav-item-icon">&#128200;</span>
           <span class="nav-item-label">Live scores</span>
         </a>
@@ -110,15 +106,15 @@ function buildRolNav() {
     sections.push(`
       <div class="nav-group">
         <div class="nav-group-label">Spelbegeleider</div>
-        <a href="#/dashboard" class="nav-item" data-route="/dashboard">
+        <a href="#/" class="nav-item" data-route="/">
           <span class="nav-item-icon">&#9699;</span>
           <span class="nav-item-label">Dashboard</span>
         </a>
-        <a href="#/spelbegeleider/categorie" class="nav-item" data-route="/spelbegeleider/categorie">
+        <a href="#/scoreformulier" class="nav-item" data-route="/scoreformulier">
           <span class="nav-item-icon">&#128101;</span>
           <span class="nav-item-label">Mijn categorie</span>
         </a>
-        <a href="#/spelbegeleider/scores" class="nav-item" data-route="/spelbegeleider/scores">
+        <a href="#/scores" class="nav-item" data-route="/scores">
           <span class="nav-item-icon">&#128200;</span>
           <span class="nav-item-label">Live scoretabel</span>
         </a>
@@ -130,29 +126,57 @@ function buildRolNav() {
     sections.push(`
       <div class="nav-group">
         <div class="nav-group-label">Organisatie</div>
-        <a href="#/dashboard" class="nav-item" data-route="/dashboard">
+        <a href="#/" class="nav-item" data-route="/">
           <span class="nav-item-icon">&#9699;</span>
           <span class="nav-item-label">Dashboard</span>
         </a>
-        <a href="#/organisator/editie" class="nav-item" data-route="/organisator/editie">
+        <a href="#/edities" class="nav-item" data-route="/edities">
           <span class="nav-item-icon">&#127937;</span>
-          <span class="nav-item-label">Editiebeheer</span>
+          <span class="nav-item-label">Edities</span>
+        </a>
+        <a href="#/inschrijvingen" class="nav-item" data-route="/inschrijvingen">
+          <span class="nav-item-icon">&#128221;</span>
+          <span class="nav-item-label">Inschrijvingen</span>
+        </a>
+        <a href="#/organisator/subkampen" class="nav-item" data-route="/organisator/subkampen">
+          <span class="nav-item-icon">&#127979;</span>
+          <span class="nav-item-label">Subkampen</span>
         </a>
         <a href="#/organisator/plattegrond" class="nav-item" data-route="/organisator/plattegrond">
           <span class="nav-item-icon">&#128205;</span>
           <span class="nav-item-label">Plattegrond</span>
         </a>
-        <a href="#/organisator/inschrijvingen" class="nav-item" data-route="/organisator/inschrijvingen">
-          <span class="nav-item-icon">&#128203;</span>
-          <span class="nav-item-label">Inschrijvingen</span>
+        <a href="#/organisator/categorieen" class="nav-item" data-route="/organisator/categorieen">
+          <span class="nav-item-icon">&#127381;</span>
+          <span class="nav-item-label">Categorieën</span>
         </a>
-        <a href="#/organisator/scores" class="nav-item" data-route="/organisator/scores">
+        <a href="#/organisator/programma" class="nav-item" data-route="/organisator/programma">
+          <span class="nav-item-icon">&#128197;</span>
+          <span class="nav-item-label">Programma</span>
+        </a>
+        <a href="#/organisator/jury" class="nav-item" data-route="/organisator/jury">
+          <span class="nav-item-icon">&#128203;</span>
+          <span class="nav-item-label">Jury</span>
+        </a>
+        <a href="#/organisator/vrijwilligers" class="nav-item" data-route="/organisator/vrijwilligers">
+          <span class="nav-item-icon">&#128170;</span>
+          <span class="nav-item-label">Vrijwilligers</span>
+        </a>
+        <a href="#/organisator/aanvragen" class="nav-item" data-route="/organisator/aanvragen">
+          <span class="nav-item-icon">&#128203;</span>
+          <span class="nav-item-label">Aanvragen</span>
+        </a>
+        <a href="#/organisator/rally-beheer" class="nav-item" data-route="/organisator/rally-beheer">
+          <span class="nav-item-icon">&#128204;</span>
+          <span class="nav-item-label">Rally beheer</span>
+        </a>
+        <a href="#/organisator/rally-tracking" class="nav-item" data-route="/organisator/rally-tracking">
+          <span class="nav-item-icon">&#128200;</span>
+          <span class="nav-item-label">Rally tracking</span>
+        </a>
+        <a href="#/scores" class="nav-item" data-route="/scores">
           <span class="nav-item-icon">&#128200;</span>
           <span class="nav-item-label">Scorebeheer</span>
-        </a>
-        <a href="#/organisator/qr" class="nav-item" data-route="/organisator/qr">
-          <span class="nav-item-icon">&#9638;</span>
-          <span class="nav-item-label">QR-codes</span>
         </a>
       </div>
     `);
@@ -170,10 +194,11 @@ function buildRolNav() {
           <span class="nav-item-icon">&#127960;&#65039;</span>
           <span class="nav-item-label">Verenigingen</span>
         </a>
-        <a href="#/admin/categorieen" class="nav-item" data-route="/admin/categorieen">
-          <span class="nav-item-icon">&#127381;</span>
-          <span class="nav-item-label">Categorie-templates</span>
+        <a href="#/edities" class="nav-item" data-route="/edities">
+          <span class="nav-item-icon">&#128197;</span>
+          <span class="nav-item-label">Edities</span>
         </a>
+
       </div>
     `);
   }

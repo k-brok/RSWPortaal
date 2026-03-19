@@ -19,40 +19,44 @@ const routes = {
   '/registreren':        () => import(`./pages/registreren.js?v=${V}`),
   '/wachtwoord-vergeten':() => import(`./pages/wachtwoord-vergeten.js?v=${V}`),
   '/wachtwoord-reset':   () => import(`./pages/wachtwoord-reset.js?v=${V}`),
-  '/programma':     () => import(`./pages/programma.js?v=${V}`),
-  '/uitslagen':     () => import(`./pages/uitslagen.js?v=${V}`),
-  '/over':          () => import(`./pages/over.js?v=${V}`),
+  '/uitnodiging':        () => import(`./pages/uitnodiging.js?v=${V}`),
+  '/programma':          () => import(`./pages/programma.js?v=${V}`),
+  '/uitslagen':          () => import(`./pages/uitslagen.js?v=${V}`),
+  '/over':               () => import(`./pages/over.js?v=${V}`),
+
+  // Inschrijvingen (leiding + organisator/admin)
+  '/inschrijvingen':     () => import(`./pages/inschrijvingen.js?v=${V}`),
+
+  // Edities (admin: volledig | organisator: bewerken)
+  '/edities':            () => import(`./pages/edities.js?v=${V}`),
+
+  // Scores (admin/organisator: invoer + live overzicht)
+  '/scores':             () => import(`./pages/scores.js?v=${V}`),
+
+  // Scoreformulier (jury: token-based | spelbegeleider: categorie-overzicht)
+  '/scoreformulier':     () => import(`./pages/scoreformulier.js?v=${V}`),
 
   // Leiding
-  '/inschrijving':        () => import(`./pages/leiding/inschrijving.js?v=${V}`),
-  '/mijn-inschrijvingen': () => import(`./pages/leiding/mijn-inschrijvingen.js?v=${V}`),
 
   // Vrijwilliger
   '/vrijwilliger/inschrijving': () => import(`./pages/vrijwilliger/inschrijving.js?v=${V}`),
 
-  // Jury
-  '/jury/scoreformulier': () => import(`./pages/jury/scoreformulier.js?v=${V}`),
-  '/jury/scores':         () => import(`./pages/jury/scores.js?v=${V}`),
-
-  // Spelbegeleider
-  '/spelbegeleider/categorie': () => import(`./pages/spelbegeleider/categorie.js?v=${V}`),
-  '/spelbegeleider/scores':    () => import(`./pages/spelbegeleider/scores.js?v=${V}`),
-
   // Organisator
-  '/organisator/editie':         () => import(`./pages/organisator/editie.js?v=${V}`),
-  '/organisator/plattegrond':    () => import(`./pages/organisator/plattegrond.js?v=${V}`),
-  '/organisator/inschrijvingen': () => import(`./pages/organisator/inschrijvingen.js?v=${V}`),
-  '/organisator/scores':         () => import(`./pages/organisator/scores.js?v=${V}`),
-  '/organisator/qr':             () => import(`./pages/organisator/qr.js?v=${V}`),
+  '/organisator/plattegrond':  () => import(`./pages/organisator/plattegrond.js?v=${V}`),
+  '/organisator/subkampen':    () => import(`./pages/organisator/subkampen.js?v=${V}`),
+  '/organisator/categorieen':  () => import(`./pages/organisator/categorieen.js?v=${V}`),
+  '/organisator/programma':    () => import(`./pages/organisator/programma.js?v=${V}`),
+  '/organisator/jury':         () => import(`./pages/organisator/jury.js?v=${V}`),
+  '/organisator/vrijwilligers': () => import(`./pages/organisator/vrijwilligers.js?v=${V}`),
+  '/organisator/aanvragen':    () => import(`./pages/organisator/aanvragen.js?v=${V}`),
+  '/organisator/rally-beheer':   () => import(`./pages/organisator/rally-beheer.js?v=${V}`),
+  '/organisator/rally-tracking': () => import(`./pages/organisator/rally-tracking.js?v=${V}`),
 
   // Admin
   '/admin/gebruikers':   () => import(`./pages/admin/gebruikers.js?v=${V}`),
   '/admin/verenigingen': () => import(`./pages/admin/verenigingen.js?v=${V}`),
-  '/admin/categorieen':  () => import(`./pages/admin/categorieen.js?v=${V}`),
 
-  // Dashboard (gedeeld)
-  '/dashboard': () => import(`./pages/dashboard.js?v=${V}`),
-  '/profiel':   () => import(`./pages/profiel.js?v=${V}`),
+  '/profiel': () => import(`./pages/profiel.js?v=${V}`),
 };
 
 // Actieve pagina-module bijhouden voor cleanup

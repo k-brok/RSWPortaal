@@ -1,0 +1,575 @@
+// pages/organisator/rally-beheer.js — Rally momenten & station beheer
+
+import { get, post, put, del } from '../../services/api.js';
+import { escapeHtml } from '../../utils/escape.js';
+
+const JURY_BASE  = '/admin/jury';
+const CAT_BASE   = '/admin/editie-categorieen';
+const RALLY_BASE = '/admin/rally';
+
+let edities     = [];
+let editieId    = null;
+let momenten    = [];
+let categorieen = [];
+// stationsCache[momentId] = [{ id, naam, criteria[], qr_dataurl, ... }]
+let stationsCache = {};
+
+export async function render() {
+  document.getElementById('content').innerHTML = `
+    <div class="page-header">
+      <div class="page-header-left"><h1>&#128204; Rally beheer</h1></div>
+      <button class="btn btn-primary" id="btn-nieuw-moment">+ Nieuw rally moment</button>
+    </div>
+    <div id="rally-berichten"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+      <label class="form-label" style="margin:0;">Editie:</label>
+      <select id="rally-editie-sel" class="form-input" style="max-width:260px;"><option>Laden…</option></select>
+    </div>
+    <div id="rally-content"><p class="text-muted">Selecteer een editie…</p></div>
+
+    <!-- Modal: moment aanmaken/bewerken -->
+    <div id="moment-modal" class="modal-backdrop" style="display:none">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 id="mm-titel">Rally moment</h2>
+          <button type="button" id="mm-sluiten" class="modal-sluit">&#10005;</button>
+        </div>
+        <form id="moment-form">
+          <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Naam (optioneel)</label>
+              <input type="text" id="mm-naam" class="form-input" placeholder="bijv. Ochtend rally">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Categorie *</label>
+              <select id="mm-categorie" class="form-input" required></select>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <div class="form-group" style="flex:1;min-width:160px;">
+                <label class="form-label">Starttijd *</label>
+                <input type="datetime-local" id="mm-start" class="form-input" required>
+              </div>
+              <div class="form-group" style="flex:1;min-width:160px;">
+                <label class="form-label">Eindtijd *</label>
+                <input type="datetime-local" id="mm-eind" class="form-input" required>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" id="mm-annuleer">Annuleren</button>
+            <button type="submit" class="btn btn-primary">Opslaan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: station aanmaken/bewerken + criteria kiezen -->
+    <div id="station-modal" class="modal-backdrop" style="display:none">
+      <div class="modal" style="max-width:580px;width:100%">
+        <div class="modal-header">
+          <h2 id="sm-titel">Station</h2>
+          <button type="button" id="sm-sluiten" class="modal-sluit">&#10005;</button>
+        </div>
+        <form id="station-form">
+          <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow-y:auto;">
+            <div class="form-group">
+              <label class="form-label">Naam station *</label>
+              <input type="text" id="sm-naam" class="form-input" required placeholder="bijv. Station 1 — Touw klimmen">
+            </div>
+            <div>
+              <label class="form-label" style="margin-bottom:6px;">Criteria — selecteer wat dit station beoordeelt</label>
+              <div class="form-hint" style="margin-bottom:8px;">
+                <strong>Scoreformulier</strong>: jury vult score in op het station. &nbsp;
+                <strong>Aankomst</strong>: score wordt automatisch toegekend bij scannen (niet zichtbaar voor jury).
+              </div>
+              <div id="sm-criteria-lijst"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" id="sm-annuleer">Annuleren</button>
+            <button type="submit" class="btn btn-primary">Opslaan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  document.querySelectorAll('.modal-sluit').forEach(btn => {
+    btn.style.cssText = 'background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer;line-height:1';
+  });
+
+  await laadEdities();
+  document.getElementById('btn-nieuw-moment').addEventListener('click', () => {
+    if (!editieId) { toon('error', 'Selecteer eerst een editie'); return; }
+    openMomentModal(null);
+  });
+}
+
+// ── Edities & momenten ─────────────────────────────────────────────
+
+async function laadEdities() {
+  try {
+    edities = await get('/admin/edities');
+    const sel = document.getElementById('rally-editie-sel');
+    sel.innerHTML = '<option value="">— kies editie —</option>' +
+      edities.map(e => `<option value="${e.id}">${escapeHtml(e.naam)}${e.actief ? ' (actief)' : ''}</option>`).join('');
+    const actief = edities.find(e => e.actief);
+    if (actief) { sel.value = actief.id; await wisselEditie(actief.id); }
+    sel.addEventListener('change', () => wisselEditie(Number(sel.value) || null));
+  } catch (e) { toon('error', e.message); }
+}
+
+async function wisselEditie(id) {
+  editieId      = id;
+  stationsCache = {};
+  momenten      = [];
+  categorieen   = [];
+  if (!id) {
+    document.getElementById('rally-content').innerHTML = '<p class="text-muted">Geen editie geselecteerd.</p>';
+    return;
+  }
+  try {
+    categorieen = await get(`${CAT_BASE}?editie_id=${id}`);
+    await laadMomenten();
+  } catch (e) { toon('error', e.message); }
+}
+
+async function laadMomenten() {
+  try {
+    const alle = await get(`${JURY_BASE}/momenten?editie_id=${editieId}`);
+    momenten = alle.filter(m => m.rally_modus);
+
+    // Laad stations voor alle momenten parallel
+    await Promise.all(momenten.map(async m => {
+      try {
+        stationsCache[m.id] = await get(`${RALLY_BASE}/stations?moment_id=${m.id}`);
+      } catch { stationsCache[m.id] = []; }
+    }));
+
+    renderMomenten();
+  } catch (e) { toon('error', e.message); }
+}
+
+// ── Render ─────────────────────────────────────────────────────────
+
+function renderMomenten() {
+  const el = document.getElementById('rally-content');
+  if (!momenten.length) {
+    el.innerHTML = `<div class="card"><p class="text-muted" style="padding:16px;">
+      Nog geen rally momenten. Klik op "+ Nieuw rally moment" om te beginnen.
+    </p></div>`;
+    return;
+  }
+  el.innerHTML = momenten.map(m => renderMomentKaart(m)).join('');
+  bindActies();
+}
+
+function renderMomentKaart(m) {
+  const stations = stationsCache[m.id] || [];
+  const open     = isOpen(m);
+
+  return `
+    <div class="card" style="margin-bottom:16px;" data-moment-id="${m.id}">
+      <div style="padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;">
+          <div style="font-weight:700;font-size:1rem;">
+            ${m.naam ? escapeHtml(m.naam) + ' &mdash; ' : ''}${escapeHtml(m.categorie_naam || '—')}
+          </div>
+          <div class="text-muted" style="font-size:.82rem;margin-top:2px;">
+            ${fmtDT(m.start_tijd)} &ndash; ${fmtDT(m.eind_tijd)}
+            &nbsp;&middot;&nbsp; ${stations.length} station(s)
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          ${open
+            ? '<span class="badge badge-success">&#9679; Open</span>'
+            : m.handmatig_open
+              ? '<span class="badge badge-warning">&#9679; Handmatig open</span>'
+              : '<span class="badge" style="background:var(--color-surface-alt)">Gesloten</span>'}
+          <button class="btn btn-sm btn-outline" data-actie="toggle-open" data-id="${m.id}">
+            ${m.handmatig_open ? 'Sluiten' : 'Openen'}
+          </button>
+          <button class="btn btn-sm btn-outline" data-actie="bewerk-moment" data-id="${m.id}">Bewerk</button>
+          <button class="btn btn-sm btn-danger"  data-actie="verwijder-moment" data-id="${m.id}">Verwijder</button>
+        </div>
+      </div>
+
+      <div style="padding:0 16px 16px;border-top:1px solid var(--color-border);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px;flex-wrap:wrap;gap:8px;">
+          <strong style="font-size:.9rem;">Stations</strong>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-primary" data-actie="nieuw-station" data-id="${m.id}">+ Station toevoegen</button>
+            ${stations.length ? `<button class="btn btn-sm btn-outline" data-actie="print-qr" data-id="${m.id}">&#128438; Print alle QR's</button>` : ''}
+          </div>
+        </div>
+        ${renderStationsLijst(stations, m.id)}
+      </div>
+    </div>
+  `;
+}
+
+function renderStationsLijst(stations, momentId) {
+  if (!stations.length) {
+    return '<p class="text-muted" style="font-size:.85rem;">Nog geen stations. Voeg een station toe om te beginnen.</p>';
+  }
+  return stations.map(s => renderStationKaart(s, momentId)).join('');
+}
+
+function renderStationKaart(s, momentId) {
+  const juryCriteria     = (s.criteria || []).filter(c => !c.is_aankomst);
+  const aankomstCriteria = (s.criteria || []).filter(c => c.is_aankomst);
+
+  const juryLabels = juryCriteria.map(c =>
+    `<span class="badge" style="background:var(--color-surface-alt);font-size:.72rem;margin:1px;">
+      ${escapeHtml(c.criterium_naam)}
+    </span>`
+  ).join('');
+
+  const aankomstLabels = aankomstCriteria.map(c =>
+    `<span class="badge badge-success" style="font-size:.72rem;margin:1px;" title="Automatisch ${c.aankomst_punten}p bij aankomst">
+      &#9654; ${escapeHtml(c.criterium_naam)} (${c.aankomst_punten}p)
+    </span>`
+  ).join('');
+
+  return `
+    <div style="background:var(--color-surface-alt);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;"
+         data-station-id="${s.id}">
+      <div style="flex:1;min-width:180px;">
+        <div style="font-weight:600;margin-bottom:4px;">
+          ${escapeHtml(s.naam)}
+          ${s.criteria.length === 0 ? '<span class="badge badge-warning" style="font-size:.7rem;margin-left:4px;">Geen criteria</span>' : ''}
+        </div>
+        ${juryLabels ? `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px;">${juryLabels}</div>` : ''}
+        ${aankomstLabels ? `<div style="display:flex;flex-wrap:wrap;gap:2px;">${aankomstLabels}</div>` : ''}
+        ${!juryLabels && !aankomstLabels ? '<span class="text-muted" style="font-size:.8rem;">Geen criteria ingesteld</span>' : ''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+        ${s.qr_dataurl
+          ? `<img src="${s.qr_dataurl}" width="48" height="48" style="border-radius:4px;" title="Station QR">`
+          : '<span class="text-muted" style="font-size:.75rem;">Geen QR</span>'}
+        <button class="btn btn-sm btn-outline" data-actie="bewerk-station" data-id="${s.id}" data-moment-id="${momentId}">Bewerk</button>
+        <button class="btn btn-sm btn-danger"  data-actie="verwijder-station" data-id="${s.id}" data-moment-id="${momentId}">Verwijder</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Event binding ──────────────────────────────────────────────────
+
+function bindActies() {
+  document.getElementById('rally-content').querySelectorAll('[data-actie]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const actie     = btn.dataset.actie;
+      const id        = Number(btn.dataset.id);
+      const momentId  = Number(btn.dataset.momentId || btn.dataset.id);
+
+      if (actie === 'bewerk-moment') {
+        openMomentModal(momenten.find(x => x.id === id));
+        return;
+      }
+      if (actie === 'verwijder-moment') {
+        const m = momenten.find(x => x.id === id);
+        if (!confirm(`Rally moment "${m?.naam || m?.categorie_naam}" verwijderen?`)) return;
+        try { await del(`${JURY_BASE}/momenten/${id}`); await laadMomenten(); }
+        catch (err) { toon('error', err.message); }
+        return;
+      }
+      if (actie === 'toggle-open') {
+        try { await put(`${JURY_BASE}/momenten/${id}/open`, {}); await laadMomenten(); }
+        catch (err) { toon('error', err.message); }
+        return;
+      }
+      if (actie === 'nieuw-station') {
+        openStationModal(null, id);
+        return;
+      }
+      if (actie === 'bewerk-station') {
+        const station = (stationsCache[momentId] || []).find(s => s.id === id);
+        if (station) openStationModal(station, momentId);
+        return;
+      }
+      if (actie === 'verwijder-station') {
+        if (!confirm('Station verwijderen?')) return;
+        try {
+          await del(`${RALLY_BASE}/stations/${id}`);
+          stationsCache[momentId] = await get(`${RALLY_BASE}/stations?moment_id=${momentId}`);
+          renderMomenten();
+          toon('success', 'Station verwijderd.');
+        } catch (err) { toon('error', err.message); }
+        return;
+      }
+      if (actie === 'print-qr') {
+        printStationQrs(id, stationsCache[id] || [], momenten.find(x => x.id === id));
+        return;
+      }
+    });
+  });
+}
+
+// ── Moment modal ───────────────────────────────────────────────────
+
+let bewerkMomentId = null;
+
+function openMomentModal(m) {
+  bewerkMomentId = m?.id ?? null;
+  document.getElementById('mm-titel').textContent = m ? 'Rally moment bewerken' : 'Nieuw rally moment';
+
+  const catSel = document.getElementById('mm-categorie');
+  catSel.innerHTML = '<option value="">— kies categorie —</option>' +
+    categorieen.map(c => `<option value="${c.id}">${escapeHtml(c.naam)}</option>`).join('');
+  if (m?.categorie_id) catSel.value = m.categorie_id;
+
+  document.getElementById('mm-naam').value  = m?.naam || '';
+  document.getElementById('mm-start').value = toDatetimeLocal(m?.start_tijd);
+  document.getElementById('mm-eind').value  = toDatetimeLocal(m?.eind_tijd);
+
+  const modal = document.getElementById('moment-modal');
+  modal.style.display = 'flex';
+  document.getElementById('mm-sluiten').onclick  = () => { modal.style.display = 'none'; };
+  document.getElementById('mm-annuleer').onclick = () => { modal.style.display = 'none'; };
+  document.getElementById('moment-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const body = {
+      editie_id:    editieId,
+      categorie_id: Number(catSel.value),
+      naam:         document.getElementById('mm-naam').value.trim() || null,
+      start_tijd:   document.getElementById('mm-start').value,
+      eind_tijd:    document.getElementById('mm-eind').value,
+      jureer_modus: 'numeriek',
+      rally_modus:  true,
+      score_niveau: 'criterium',
+      aankomst_punten: 0,
+    };
+    try {
+      if (bewerkMomentId) await put(`${JURY_BASE}/momenten/${bewerkMomentId}`, body);
+      else await post(`${JURY_BASE}/momenten`, body);
+      modal.style.display = 'none';
+      await laadMomenten();
+    } catch (err) { toon('error', err.message); }
+  };
+}
+
+// ── Station modal (naam + criteria-selectie) ───────────────────────
+
+let bewerkStationId  = null;
+let stationMomentId  = null;
+
+async function openStationModal(station, momentId) {
+  bewerkStationId = station?.id ?? null;
+  stationMomentId = momentId;
+
+  document.getElementById('sm-titel').textContent = station ? 'Station bewerken' : 'Nieuw station';
+  document.getElementById('sm-naam').value = station?.naam || '';
+
+  // Laad criteria van de categorie van dit moment
+  const moment = momenten.find(m => m.id === momentId);
+  let critLijst = [];
+  if (moment?.categorie_id) {
+    try {
+      const genest = await get(`${CAT_BASE}/details?editie_id=${editieId}`);
+      const cat = genest.find(c => c.id === moment.categorie_id);
+      if (cat) {
+        for (const sub of cat.subcategorieen || []) {
+          for (const cr of sub.criteria || []) {
+            critLijst.push({ ...cr, subcategorie_naam: sub.naam });
+          }
+        }
+      }
+    } catch { /* geen criteria */ }
+  }
+
+  // Bestaande criteria van dit station — opgesplitst in jury en aankomst
+  const huidigeCriteria = station?.criteria || [];
+  const huidigeIds      = new Set(huidigeCriteria.map(c => c.criterium_id));
+  const huidigeType     = Object.fromEntries(huidigeCriteria.map(c => [c.criterium_id, c.is_aankomst ? 'aankomst' : 'jury']));
+  const huidigePunten   = Object.fromEntries(huidigeCriteria.map(c => [c.criterium_id, c.aankomst_punten ?? 0]));
+
+  const container = document.getElementById('sm-criteria-lijst');
+  if (!critLijst.length) {
+    container.innerHTML = '<p class="text-muted" style="font-size:.85rem;">Geen criteria gevonden voor deze categorie.</p>';
+  } else {
+    let huidigeSub = null;
+    let html = '';
+    for (const cr of critLijst) {
+      if (cr.subcategorie_naam !== huidigeSub) {
+        huidigeSub = cr.subcategorie_naam;
+        html += `<div style="font-size:.8rem;font-weight:700;color:var(--color-text-muted);
+          letter-spacing:.05em;margin:10px 0 4px;">${escapeHtml(huidigeSub)}</div>`;
+      }
+      const checked    = huidigeIds.has(cr.id);
+      const type       = huidigeType[cr.id] ?? 'jury';
+      const punten     = huidigePunten[cr.id] ?? 0;
+      const isAankomst = type === 'aankomst';
+
+      html += `
+        <div style="padding:6px 0;border-bottom:1px solid var(--color-border);" class="crit-rij" data-crit-id="${cr.id}">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" class="crit-check" id="crit-${cr.id}" data-crit-id="${cr.id}"
+              ${checked ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--color-primary);flex-shrink:0;">
+            <label for="crit-${cr.id}" style="flex:1;margin:0;cursor:pointer;">
+              ${escapeHtml(cr.naam)}
+              ${cr.invoer_type && cr.invoer_type !== 'getal'
+                ? `<span class="badge badge-info" style="font-size:.68rem;">${escapeHtml(cr.invoer_type)}</span>` : ''}
+              <span class="text-muted" style="font-size:.78rem;"> max ${cr.max_score}</span>
+            </label>
+          </div>
+          <div class="crit-type-sectie" style="margin-top:6px;margin-left:26px;display:${checked ? 'flex' : 'none'};
+            align-items:center;gap:16px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer;">
+              <input type="radio" name="crit-type-${cr.id}" class="crit-type" value="jury"
+                data-crit-id="${cr.id}" ${!isAankomst ? 'checked' : ''}>
+              Scoreformulier <span class="text-muted" style="font-size:.75rem;">(jury vult in)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer;">
+              <input type="radio" name="crit-type-${cr.id}" class="crit-type" value="aankomst"
+                data-crit-id="${cr.id}" ${isAankomst ? 'checked' : ''}>
+              Aankomst <span class="text-muted" style="font-size:.75rem;">(auto bij scan)</span>
+            </label>
+            <div class="aankomst-score-sectie" style="display:${isAankomst ? 'flex' : 'none'};align-items:center;gap:4px;">
+              <label style="font-size:.78rem;color:var(--color-text-muted);margin:0;">Score:</label>
+              <input type="number" class="form-input crit-punten" data-crit-id="${cr.id}"
+                value="${punten}" min="0" max="${cr.max_score}" style="width:64px;padding:4px 6px;">
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    container.innerHTML = html;
+
+    // Checkbox toggle → toon/verberg type-sectie
+    container.querySelectorAll('.crit-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const rij     = cb.closest('.crit-rij');
+        const typeSec = rij.querySelector('.crit-type-sectie');
+        typeSec.style.display = cb.checked ? 'flex' : 'none';
+      });
+    });
+
+    // Radio toggle → toon/verberg aankomst-score invoer
+    container.querySelectorAll('.crit-type').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const rij      = radio.closest('.crit-rij');
+        const scoreSec = rij.querySelector('.aankomst-score-sectie');
+        scoreSec.style.display = radio.value === 'aankomst' ? 'flex' : 'none';
+      });
+    });
+  }
+
+  const modal = document.getElementById('station-modal');
+  modal.style.display = 'flex';
+  document.getElementById('sm-sluiten').onclick  = () => { modal.style.display = 'none'; };
+  document.getElementById('sm-annuleer').onclick = () => { modal.style.display = 'none'; };
+
+  document.getElementById('station-form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const naam = document.getElementById('sm-naam').value.trim();
+
+    // Verzamel geselecteerde criteria met type (jury of aankomst)
+    const criteria = [];
+    document.querySelectorAll('.crit-check:checked').forEach((cb, i) => {
+      const critId     = Number(cb.dataset.critId);
+      const typeRadio  = document.querySelector(`.crit-type[data-crit-id="${critId}"]:checked`);
+      const isAankomst = typeRadio?.value === 'aankomst';
+      const punten     = isAankomst
+        ? Number(document.querySelector(`.crit-punten[data-crit-id="${critId}"]`)?.value) || 0
+        : 0;
+      criteria.push({ criterium_id: critId, aankomst_punten: punten, is_aankomst: isAankomst, volgorde: i });
+    });
+
+    try {
+      if (bewerkStationId) {
+        // Update naam
+        await put(`${RALLY_BASE}/stations/${bewerkStationId}`, { naam });
+        // Update criteria
+        await put(`${RALLY_BASE}/stations/${bewerkStationId}/criteria`, { criteria });
+      } else {
+        // Nieuw station aanmaken
+        const r = await post(`${RALLY_BASE}/stations`, { jurymoment_id: stationMomentId, naam });
+        // Criteria instellen
+        if (criteria.length) {
+          await put(`${RALLY_BASE}/stations/${r.id}/criteria`, { criteria });
+        }
+      }
+      modal.style.display = 'none';
+      stationsCache[stationMomentId] = await get(`${RALLY_BASE}/stations?moment_id=${stationMomentId}`);
+      renderMomenten();
+    } catch (err) { toon('error', err.message); }
+  };
+}
+
+// ── Print station QR's ─────────────────────────────────────────────
+
+function printStationQrs(momentId, stations, m) {
+  const metQr = stations.filter(s => s.qr_dataurl);
+  if (!metQr.length) { toon('error', 'Geen QR codes beschikbaar.'); return; }
+
+  const labels = metQr.map(s => {
+    const juryCrit    = (s.criteria || []).filter(c => !c.is_aankomst);
+    const aankomstCr  = (s.criteria || []).filter(c => c.is_aankomst);
+    const critNamen   = juryCrit.map(c => escapeHtml(c.criterium_naam)).join(', ') || '—';
+    const bonusBadge  = aankomstCr.length
+      ? `<div class="qr-bonus">&#9654; ${aankomstCr.map(c => `${escapeHtml(c.criterium_naam)} +${c.aankomst_punten}p`).join(', ')}</div>` : '';
+    return `
+      <div class="qr-label">
+        <div class="qr-naam">${escapeHtml(s.naam)}</div>
+        <img src="${s.qr_dataurl}" width="140" height="140">
+        <div class="qr-cat">${escapeHtml(m?.categorie_naam || '')}</div>
+        <div class="qr-crit">${critNamen}</div>
+        ${bonusBadge}
+      </div>`;
+  }).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>Station QR codes — ${escapeHtml(m?.naam || m?.categorie_naam || '')}</title>
+    <style>
+      body { margin:0; font-family:sans-serif; background:#fff; color:#000; }
+      .grid { display:flex; flex-wrap:wrap; gap:10px; padding:12px; }
+      .qr-label { width:180px; border:2px solid #333; border-radius:6px; padding:8px;
+        display:flex; flex-direction:column; align-items:center; page-break-inside:avoid; }
+      .qr-naam { font-size:.95rem; font-weight:700; text-align:center; margin-bottom:6px; }
+      .qr-cat  { font-size:.7rem; color:#555; margin-top:4px; text-align:center; }
+      .qr-crit { font-size:.68rem; color:#333; margin-top:3px; text-align:center; }
+      .qr-bonus{ font-size:.72rem; color:#e44; font-weight:600; margin-top:2px; }
+      .no-print{ padding:10px; background:#eee; margin-bottom:8px; display:flex; gap:8px; align-items:center; }
+      @media print { .no-print { display:none; } }
+    </style>
+  </head><body>
+    <div class="no-print">
+      <strong>Station QR labels — ${escapeHtml(m?.naam || m?.categorie_naam || '')}</strong>
+      <button onclick="window.print()">&#128438; Afdrukken</button>
+    </div>
+    <div class="grid">${labels}</div>
+  </body></html>`);
+  win.document.close();
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+function isOpen(m) {
+  if (m.handmatig_open) return true;
+  const now = new Date();
+  return now >= new Date(m.start_tijd) && now <= new Date(m.eind_tijd);
+}
+
+function fmtDT(dt) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleString('nl-NL', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+function toDatetimeLocal(dt) {
+  if (!dt) return '';
+  const d = new Date(dt);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function toon(type, msg) {
+  const el = document.getElementById('rally-berichten');
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type === 'error' ? 'error' : 'success'}">${escapeHtml(msg)}</div>`;
+  setTimeout(() => { if (el) el.innerHTML = ''; }, 5000);
+}
+
+export function onDestroy() {}

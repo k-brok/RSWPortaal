@@ -86,7 +86,7 @@ export function buildModals() {
         </div>
         <div class="modal-footer">
           <button class="btn btn-ghost" id="confirm-annuleer">Annuleren</button>
-          <button class="btn btn-primary" id="confirm-ok" style="background:var(--color-error)">Verwijderen</button>
+          <button class="btn btn-danger" id="confirm-ok">Verwijderen</button>
         </div>
       </div>
     </div>`;

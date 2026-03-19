@@ -27,12 +27,12 @@ export async function render() {
         <div class="card-body">
           <div id="profiel-loading" class="text-muted text-sm">Laden...</div>
           <div id="profiel-info" style="display:none">
-            <table style="width:100%;border-collapse:collapse">
-              <tr><td class="text-muted text-sm" style="padding:6px 0;width:120px">Naam</td><td id="pi-naam" style="font-weight:600"></td></tr>
-              <tr><td class="text-muted text-sm" style="padding:6px 0">E-mail</td><td id="pi-email"></td></tr>
-              <tr><td class="text-muted text-sm" style="padding:6px 0">Rol</td><td id="pi-rol"></td></tr>
-              <tr><td class="text-muted text-sm" style="padding:6px 0">Groep</td><td id="pi-groep"></td></tr>
-            </table>
+            <dl class="profiel-dl">
+              <div class="profiel-dl-rij"><dt>Naam</dt><dd id="pi-naam"></dd></div>
+              <div class="profiel-dl-rij"><dt>E-mail</dt><dd id="pi-email"></dd></div>
+              <div class="profiel-dl-rij"><dt>Rol</dt><dd id="pi-rol"></dd></div>
+              <div class="profiel-dl-rij"><dt>Groep</dt><dd id="pi-groep"></dd></div>
+            </dl>
           </div>
         </div>
       </div>

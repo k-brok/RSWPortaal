@@ -2,11 +2,7 @@
 
 import { getAccessToken, refreshToken, clearUser } from './auth.js';
 import { navigate } from '../utils/router.js';
-
-// Werkt zowel bij directe toegang (/) als via Code-Server proxy (/proxy/3000/)
-function apiBase() {
-  return window.location.pathname.replace(/\/$/, '');
-}
+import { BASE_PATH } from '../config.js';
 
 // ── Basis fetch wrapper ───────────────────────────────────────────
 
@@ -18,7 +14,7 @@ async function request(method, path, body = null, retry = true) {
   const options = { method, headers, credentials: 'include' };
   if (body) options.body = JSON.stringify(body);
 
-  const res = await fetch(`${apiBase()}/api${path}`, options);
+  const res = await fetch(`${BASE_PATH}/api${path}`, options);
 
   // Silent refresh bij verlopen access token
   if (res.status === 401 && retry) {
@@ -52,39 +48,38 @@ export const api = {
 export const get    = (path)       => request('GET',    path);
 export const post   = (path, body) => request('POST',   path, body);
 export const put    = (path, body) => request('PUT',    path, body);
+export const patch  = (path, body) => request('PATCH',  path, body);
 export const del    = (path)       => request('DELETE', path);
 
 // ── Publieke endpoints (geen auth vereist) ────────────────────────
 
 export async function getActieveEditie() {
-  const res = await fetch(`${apiBase()}/api/publiek/editie/actief`);
+  const res = await fetch(`${BASE_PATH}/api/publiek/editie/actief`);
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function getTop10(editieId) {
-  const res = await fetch(`${apiBase()}/api/publiek/edities/${editieId}/top10`);
+  const res = await fetch(`${BASE_PATH}/api/publiek/edities/${editieId}/top10`);
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function getProgramma(editieId) {
-  const res = await fetch(`${apiBase()}/api/publiek/edities/${editieId}/programma`);
+  const res = await fetch(`${BASE_PATH}/api/publiek/edities/${editieId}/programma`);
   if (!res.ok) return [];
   return res.json();
 }
 
-// ── Rol-specifieke endpoints ──────────────────────────────────────
+export async function getVacatures() {
+  const res = await fetch(`${BASE_PATH}/api/publiek/vacatures`);
+  if (!res.ok) return [];
+  return res.json();
+}
 
-export const leidingApi = {
-  getInschrijvingen: () => api.get('/leiding/inschrijvingen'),
-};
+export async function getGroepen() {
+  const res = await fetch(`${BASE_PATH}/api/publiek/groepen`);
+  if (!res.ok) return [];
+  return res.json();
+}
 
-export const juryApi = {
-  getToewijzingen: () => api.get('/jury/toewijzingen'),
-};
-
-export const organisatorApi = {
-  getEdities:  () => api.get('/organisator/edities'),
-  getOverzicht: (editieId) => api.get(`/organisator/edities/${editieId}/overzicht`),
-};

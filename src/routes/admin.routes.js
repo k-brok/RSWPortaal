@@ -5,16 +5,9 @@ const bcrypt      = require('bcrypt');
 const { requireRole } = require('../middleware/auth.middleware');
 const gebruikerModel  = require('../models/gebruiker.model');
 const mailService     = require('../services/mail.service');
+const authService     = require('../services/auth.service');
 
 const adminOnly = requireRole('admin');
-
-// Genereer een veilig tijdelijk wachtwoord (leesbaar maar sterk genoeg)
-function tijdelijkWachtwoord() {
-  const woorden = ['Scouting', 'Langstraat', 'Wedstrijd', 'Patrouille'];
-  const woord   = woorden[Math.floor(Math.random() * woorden.length)];
-  const getal   = Math.floor(1000 + Math.random() * 9000);
-  return `${woord}${getal}!`;
-}
 
 // GET /api/admin/gebruikers
 router.get('/gebruikers', adminOnly, async (_req, res) => {
@@ -38,8 +31,8 @@ router.post('/gebruikers', adminOnly, async (req, res) => {
   }
 
   try {
-    const wachtwoord = tijdelijkWachtwoord();
-    const hash = await bcrypt.hash(wachtwoord, Number(process.env.BCRYPT_ROUNDS) || 12);
+    // Tijdelijk hash zodat het account bestaat maar nog niet inlogbaar is zonder activatie
+    const hash = await bcrypt.hash(authService.generateToken(), Number(process.env.BCRYPT_ROUNDS) || 12);
 
     const nieuw = await gebruikerModel.aanmaken({
       naam: naam.trim(),
@@ -49,14 +42,13 @@ router.post('/gebruikers', adminOnly, async (req, res) => {
       groep_id: groep_id || null,
     });
 
-    // Markeer direct als geverifieerd (admin-aanmaak) en stuur welkomstmail
-    await require('../config/db').execute(
-      'UPDATE gebruikers SET geverifieerd=1 WHERE id=?', [nieuw.id]
-    );
-    nieuw.geverifieerd = 1;
+    // Genereer uitnodigingstoken (7 dagen geldig) en stuur activatiemail
+    const token = authService.generateToken();
+    const verloopt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await gebruikerModel.resetTokenZetten(nieuw.id, token, verloopt);
 
-    await mailService.stuurWelkomMail(nieuw.email, nieuw.naam, wachtwoord).catch(e => {
-      console.error('Welkomstmail mislukt:', e.message);
+    await mailService.stuurUitnodigingsMail(nieuw.email, nieuw.naam, token).catch(e => {
+      console.error('Uitnodigingsmail mislukt:', e.message);
     });
 
     res.status(201).json(nieuw);
@@ -78,16 +70,16 @@ router.put('/gebruikers/:id', adminOnly, async (req, res) => {
   }
 });
 
-// POST /api/admin/gebruikers/:id/uitnodigen — Stuur nieuw wachtwoord
+// POST /api/admin/gebruikers/:id/uitnodigen — Stuur nieuwe activatielink
 router.post('/gebruikers/:id/uitnodigen', adminOnly, async (req, res) => {
   try {
     const gebruiker = await gebruikerModel.vindOpId(Number(req.params.id));
     if (!gebruiker) return res.status(404).json({ message: 'Niet gevonden' });
 
-    const wachtwoord = tijdelijkWachtwoord();
-    const hash = await bcrypt.hash(wachtwoord, Number(process.env.BCRYPT_ROUNDS) || 12);
-    await gebruikerModel.wachtwoordBijwerken(gebruiker.id, hash);
-    await mailService.stuurWelkomMail(gebruiker.email, gebruiker.naam, wachtwoord);
+    const token = authService.generateToken();
+    const verloopt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await gebruikerModel.resetTokenZetten(gebruiker.id, token, verloopt);
+    await mailService.stuurUitnodigingsMail(gebruiker.email, gebruiker.naam, token);
 
     res.json({ message: `Uitnodiging verstuurd naar ${gebruiker.email}` });
   } catch (e) { res.status(500).json({ message: e.message }); }

@@ -1,4 +1,4 @@
-// src/app.js — Express server
+// src/app.js — Express server met Socket.io
 
 require('dotenv').config();
 
@@ -6,15 +6,26 @@ const express      = require('express');
 const path         = require('path');
 const fs           = require('fs');
 const cookieParser = require('cookie-parser');
+const http         = require('http');
+const { Server }   = require('socket.io');
 
-const app   = express();
-const PORT  = process.env.PORT || 3000;
+const app      = express();
+const PORT     = process.env.PORT || 3000;
+const APP_URL  = process.env.APP_URL || `http://localhost:${PORT}`;
+const BASE_PATH = new URL(APP_URL).pathname.replace(/\/?$/, ''); // '' of '/proxy/3000'
+
+// Maak HTTP server + Socket.io
+const server = http.createServer(app);
+const io     = new Server(server, { cors: { origin: '*' } });
+
+// Initialiseer jury socket handlers
+require('./socket/jury.socket')(io);
 
 // Unieke versie per server-start — omzeilt proxy-caches voor JS/CSS
 const BUILD_VERSION = Date.now().toString();
 
 // ── Middleware ────────────────────────────────────────────────────
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
 
 // ── Statische bestanden (nooit cachen in development) ─────────────
@@ -25,7 +36,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// app.js krijgt BUILD_VERSION geïnjecteerd voor cache-busting
+// app.js en config.js krijgen server-side waarden geïnjecteerd
 app.get('/js/app.js', (_req, res) => {
   const filePath = path.join(__dirname, '..', 'public', 'js', 'app.js');
   const inhoud   = fs.readFileSync(filePath, 'utf8').replace('__RSW_VERSION__', BUILD_VERSION);
@@ -34,52 +45,58 @@ app.get('/js/app.js', (_req, res) => {
   res.send(inhoud);
 });
 
+app.get('/js/config.js', (_req, res) => {
+  const filePath = path.join(__dirname, '..', 'public', 'js', 'config.js');
+  const inhoud   = fs.readFileSync(filePath, 'utf8').replace('__RSW_BASEPATH__', BASE_PATH);
+  res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(inhoud);
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/vendor/pdfmake', express.static(path.join(__dirname, '../node_modules/pdfmake/build')));
+app.use('/vendor/socketio', express.static(path.join(__dirname, '../node_modules/socket.io/client-dist')));
+
+// ── Standalone jury formulier pagina ──────────────────────────────
+app.get('/formulier', (_req, res) => {
+  const filePath = path.join(__dirname, '..', 'public', 'formulier.html');
+  const html = fs.readFileSync(filePath, 'utf8')
+    .replace('<head>', `<head>\n  <base href="${BASE_PATH}/">`);
+  res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+  res.send(html);
+});
+
+// ── Rally scan pagina (geen header/sidebar, anoniem) ──────────────
+app.get('/rally', (_req, res) => {
+  const filePath = path.join(__dirname, '..', 'public', 'rally.html');
+  const html = fs.readFileSync(filePath, 'utf8')
+    .replace('<head>', `<head>\n  <base href="${BASE_PATH}/">`);
+  res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+  res.send(html);
+});
 
 // ── API Routes ────────────────────────────────────────────────────
 app.use('/api/auth',                 require('./routes/auth.routes'));
 app.use('/api/profiel',              require('./routes/profiel.routes'));
-app.use('/api/admin',                require('./routes/admin.routes'));
+app.use('/api/admin/edities',        require('./routes/admin.edities.routes'));
 app.use('/api/admin/verenigingen',   require('./routes/admin.verenigingen.routes'));
-
-// ── Publieke data (mock — later vervangen door echte DB-queries) ──
-app.get('/api/publiek/editie/actief', (_req, res) => {
-  res.json({
-    id: 1, naam: 'RSW 2026', jaar: 2026,
-    datum: '2026-05-16T09:00:00',
-    locatie: 'Speelbos De Langstraat, Waalwijk',
-    inschrijving_open: true, uitslagen_gepubliceerd: true,
-  });
-});
-
-app.get('/api/publiek/edities/:id/top10', (_req, res) => {
-  res.json([
-    { patrouillenummer: 'A1', groep: 'Scouting De Langstraat',  eindscore: 94.2 },
-    { patrouillenummer: 'B3', groep: 'Scouting Heusden',        eindscore: 91.8 },
-    { patrouillenummer: 'C2', groep: 'Scouting Waalwijk',       eindscore: 89.5 },
-    { patrouillenummer: 'A4', groep: 'Scouting Drunen',         eindscore: 87.1 },
-    { patrouillenummer: 'D1', groep: 'Scouting Loon op Zand',   eindscore: 85.9 },
-    { patrouillenummer: 'B2', groep: 'Scouting Vlijmen',        eindscore: 83.4 },
-    { patrouillenummer: 'C5', groep: 'Scouting Sprang-Capelle', eindscore: 81.7 },
-    { patrouillenummer: 'E3', groep: 'Scouting Kaatsheuvel',    eindscore: 79.2 },
-    { patrouillenummer: 'A6', groep: 'Scouting De Langstraat',  eindscore: 77.8 },
-    { patrouillenummer: 'D4', groep: 'Scouting Waalwijk',       eindscore: 75.3 },
-  ]);
-});
-
-app.get('/api/publiek/edities/:id/programma', (_req, res) => {
-  res.json([
-    { starttijd: '08:30:00', naam: 'Ontvangst & registratie',   omschrijving: 'Incheck bij de ingang' },
-    { starttijd: '09:00:00', naam: 'Openingsceremonie',         omschrijving: 'Welkomstwoord en vlaggenparade' },
-    { starttijd: '09:30:00', naam: 'Categorie 1 — Pionieren',   omschrijving: 'Subkampen A t/m F' },
-    { starttijd: '11:00:00', naam: 'Categorie 2 — Eerste hulp', omschrijving: 'Subkampen A t/m F' },
-    { starttijd: '12:30:00', naam: 'Lunchpauze',                omschrijving: null },
-    { starttijd: '13:15:00', naam: 'Categorie 3 — Navigatie',   omschrijving: 'Subkampen A t/m F' },
-    { starttijd: '15:00:00', naam: 'Categorie 4 — Kampvuur',    omschrijving: 'Subkampen A t/m F' },
-    { starttijd: '16:30:00', naam: 'Puntentelling & jurering',  omschrijving: null },
-    { starttijd: '17:00:00', naam: 'Prijsuitreiking',           omschrijving: 'Afsluiting van de dag' },
-  ]);
-});
+app.use('/api/admin/editie-categorieen', require('./routes/admin.editie-categorieen.routes'));
+app.use('/api/scoreformulieren',         require('./routes/scoreformulieren.routes'));
+app.use('/api/admin/inschrijvingen', require('./routes/admin.inschrijvingen.routes'));
+app.use('/api/subkampen',           require('./routes/admin.subkampen.routes'));
+app.use('/api/plattegrond',         require('./routes/admin.plattegrond.routes'));
+app.use('/api/admin/jury',          require('./routes/admin.jury.routes')(io));
+app.use('/api/jury',                require('./routes/jury.routes')(io));
+app.use('/api/admin',               require('./routes/admin.routes'));
+app.use('/api/inschrijving',        require('./routes/inschrijving.routes'));
+app.use('/api/admin/programma',     require('./routes/admin.programma.routes'));
+app.use('/api/admin/vrijwilligers', require('./routes/admin.vrijwilligers.routes'));
+app.use('/api/admin/vrijwilliger-vacatures', require('./routes/admin.vrijwilliger-vacatures.routes'));
+app.use('/api/admin/aanvragen', require('./routes/admin.aanvragen.routes'));
+app.use('/api/vrijwilliger',        require('./routes/vrijwilliger.routes'));
+app.use('/api/publiek',             require('./routes/publiek.routes'));
+app.use('/api/rally',               require('./routes/rally.routes'));
+app.use('/api/admin/rally',         require('./routes/admin.rally.routes'));
 
 // ── SPA fallback ──────────────────────────────────────────────────
 app.get('*', (req, res) => {
@@ -89,7 +106,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`RSW Portaal draait op http://localhost:${PORT}`);
   console.log(`Omgeving: ${process.env.NODE_ENV ?? 'development'}`);
 });

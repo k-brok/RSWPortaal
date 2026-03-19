@@ -1,9 +1,6 @@
 // auth.js — Authenticatie service (JWT access token in memory, refresh via httpOnly cookie)
 
-// Werkt zowel bij directe toegang (/) als via Code-Server proxy (/proxy/3000/)
-function apiBase() {
-  return window.location.pathname.replace(/\/$/, '');
-}
+import { BASE_PATH } from '../config.js';
 
 const AUTH_KEY = 'rsw_user'; // alleen niet-gevoelige gebruikersdata in sessionStorage
 
@@ -60,7 +57,7 @@ export function hasRole(...roles) {
 // ── Login / logout ────────────────────────────────────────────────
 
 export async function login(email, wachtwoord) {
-  const res = await fetch(`${apiBase()}/api/auth/login`, {
+  const res = await fetch(`${BASE_PATH}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include', // nodig voor httpOnly refresh cookie
@@ -80,7 +77,7 @@ export async function login(email, wachtwoord) {
 
 export async function logout() {
   try {
-    await fetch(`${apiBase()}/api/auth/logout`, {
+    await fetch(`${BASE_PATH}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });
@@ -94,7 +91,7 @@ export async function logout() {
 // Wordt aangeroepen bij app-start en wanneer een API-call 401 teruggeeft
 
 export async function refreshToken() {
-  const res = await fetch(`${apiBase()}/api/auth/refresh`, {
+  const res = await fetch(`${BASE_PATH}/api/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
   });
