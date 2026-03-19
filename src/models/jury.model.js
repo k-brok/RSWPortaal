@@ -536,21 +536,24 @@ async function berekenUitslagen(editieId, gepubliceerdOnly = false) {
     }
   }
 
-  // Sorteren: reguliere patrouilles eerst (op score desc), daarna BM (op score desc)
-  resultaten.sort((a, b) => {
-    if (a.buiten_mededinging !== b.buiten_mededinging)
-      return a.buiten_mededinging ? 1 : -1;
-    return b.eindscore - a.eindscore;
-  });
+  // Sorteren: iedereen op score desc (BM doet mee in rangschikking)
+  resultaten.sort((a, b) => b.eindscore - a.eindscore);
 
-  // Positie toewijzen — alleen reguliere patrouilles (BM telt niet mee)
+  // Positie toewijzen regulier (posities 1 en 2 gaan naar LSW — alleen niet-BM)
   const regulier = resultaten.filter(r => !r.buiten_mededinging);
   let pos = 1;
   regulier.forEach((r, i) => {
     if (i > 0 && r.eindscore !== regulier[i - 1].eindscore) pos = i + 1;
     r.positie = pos;
   });
-  resultaten.filter(r => r.buiten_mededinging).forEach(r => { r.positie = null; });
+
+  // BM krijgt ook een positie op basis van de overall rangschikking, min. 3
+  // (posities 1 en 2 zijn voorbehouden aan niet-BM patrouilles die naar LSW gaan)
+  let overallPos = 1;
+  resultaten.forEach((r, i) => {
+    if (i > 0 && r.eindscore !== resultaten[i - 1].eindscore) overallPos = i + 1;
+    if (r.buiten_mededinging) r.positie = Math.max(3, overallPos);
+  });
 
   // Aparte jongste ranking
   const jongste = resultaten.filter(r => r.jongste).map((r, i, arr) => {
