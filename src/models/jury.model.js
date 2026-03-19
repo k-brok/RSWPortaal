@@ -536,23 +536,20 @@ async function berekenUitslagen(editieId, gepubliceerdOnly = false) {
     }
   }
 
-  // Sorteren: iedereen op score desc (BM doet mee in rangschikking)
+  // Sorteren op score desc (iedereen samen)
   resultaten.sort((a, b) => b.eindscore - a.eindscore);
 
-  // Positie toewijzen regulier (posities 1 en 2 gaan naar LSW — alleen niet-BM)
-  const regulier = resultaten.filter(r => !r.buiten_mededinging);
-  let pos = 1;
-  regulier.forEach((r, i) => {
-    if (i > 0 && r.eindscore !== regulier[i - 1].eindscore) pos = i + 1;
-    r.positie = pos;
-  });
+  // Posities 1 en 2 zijn voorbehouden aan de twee hoogst scorende niet-BM patrouilles (LSW-plaatsen).
+  // Alle overigen (BM + niet-BM vanaf #3) krijgen posities 3, 4, 5… op score-volgorde.
+  const lswKandidaten = resultaten.filter(r => !r.buiten_mededinging).slice(0, 2);
+  const lswIds = new Set(lswKandidaten.map(r => r.patrouille_id));
+  lswKandidaten.forEach((r, i) => { r.positie = i + 1; });
 
-  // BM krijgt ook een positie op basis van de overall rangschikking, min. 3
-  // (posities 1 en 2 zijn voorbehouden aan niet-BM patrouilles die naar LSW gaan)
-  let overallPos = 1;
-  resultaten.forEach((r, i) => {
-    if (i > 0 && r.eindscore !== resultaten[i - 1].eindscore) overallPos = i + 1;
-    if (r.buiten_mededinging) r.positie = Math.max(3, overallPos);
+  const overigen = resultaten.filter(r => !lswIds.has(r.patrouille_id));
+  let volgPos = 3;
+  overigen.forEach((r, i) => {
+    if (i > 0 && r.eindscore !== overigen[i - 1].eindscore) volgPos = i + 3;
+    r.positie = volgPos;
   });
 
   // Aparte jongste ranking

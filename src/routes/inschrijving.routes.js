@@ -239,15 +239,12 @@ router.get('/patrouilles/:id/scorekaart', async (req, res) => {
     const p = await patModel.vindOpId(patrouilleId);
     if (!p) return res.status(404).json({ message: 'Niet gevonden' });
 
-    // Leiding mag alleen eigen patrouilles
-    if (req.gebruiker.rol === 'leiding' && p.groep_id !== req.gebruiker.groep_id) {
+    if (req.gebruiker.rol === 'leiding' && p.groep_id !== req.gebruiker.groep_id)
       return res.status(403).json({ message: 'Geen toegang' });
-    }
 
     const editie = await editieModel.vindOpId(p.editie_id);
     if (!editie) return res.status(404).json({ message: 'Editie niet gevonden' });
 
-    // Leeftijden toevoegen
     if (editie.lsw_datum) {
       p.deelnemers = p.deelnemers.map(d => ({
         ...d,
@@ -255,10 +252,9 @@ router.get('/patrouilles/:id/scorekaart', async (req, res) => {
       }));
     }
 
-    // Uitslagen (gepubliceerd = false zodat org ook kan previewen)
     const juryModel = require('../models/jury.model');
     const { resultaten } = await juryModel.berekenUitslagen(editie.id, false);
-    const uitslag   = resultaten.find(u => u.patrouille_id === patrouilleId) || null;
+    const uitslag = resultaten.find(u => u.patrouille_id === patrouilleId) || null;
 
     res.json({
       patrouille: {
