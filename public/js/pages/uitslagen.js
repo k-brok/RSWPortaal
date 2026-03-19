@@ -126,7 +126,14 @@ function ranglijstKaart(titel, rijen, categorieen, isJongste) {
     </th>`
   ).join('') : '';
 
-  const rows = rijen.map(r => {
+  const gesorteerd = [...rijen].sort((a, b) => {
+    const pA = (isJongste ? a.jongste_positie : a.positie) ?? 9999;
+    const pB = (isJongste ? b.jongste_positie : b.positie) ?? 9999;
+    if (pA !== pB) return pA - pB;
+    return String(a.nummer ?? '').localeCompare(String(b.nummer ?? ''), 'nl', { numeric: true });
+  });
+
+  const rows = gesorteerd.map(r => {
     const pos      = isJongste ? r.jongste_positie : r.positie;
     const posBadge = posBadgeHtml(pos);
     const kleur    = r.subkamp?.kleur || '#888';
@@ -178,10 +185,7 @@ function ranglijstKaart(titel, rijen, categorieen, isJongste) {
 
 function posBadgeHtml(pos) {
   if (pos == null) return '<span style="color:var(--color-text-muted)">—</span>';
-  if (pos === 1)   return '<span style="font-size:1.3rem">&#129351;</span>';
-  if (pos === 2)   return '<span style="font-size:1.3rem">&#129352;</span>';
-  if (pos === 3)   return '<span style="font-size:1.3rem">&#129353;</span>';
-  return `<span style="color:var(--color-text-muted)">${pos}</span>`;
+  return `<span style="font-weight:700">${pos}</span>`;
 }
 
 // ── Afdrukken via pdfMake ────────────────────────────────────────
@@ -237,7 +241,14 @@ function pdfTabel(titel, rijen, isJongste, bmLabel) {
     text: t, style: 'kolomhdr',
   }));
 
-  const body = rijen.map(r => {
+  const gesorteerd = [...rijen].sort((a, b) => {
+    const pA = (isJongste ? a.jongste_positie : a.positie) ?? 9999;
+    const pB = (isJongste ? b.jongste_positie : b.positie) ?? 9999;
+    if (pA !== pB) return pA - pB;
+    return String(a.nummer ?? '').localeCompare(String(b.nummer ?? ''), 'nl', { numeric: true });
+  });
+
+  const body = gesorteerd.map(r => {
     const pos = isJongste ? (r.jongste_positie ?? r.positie) : r.positie;
 
     const badgeStack = [];
