@@ -93,9 +93,10 @@ export async function render() {
         </div>
 
         <!-- Canvas -->
-        <div style="background:var(--color-bg);border:1px solid var(--color-border);
-                    border-radius:var(--radius-md);padding:8px;overflow:hidden;width:100%;box-sizing:border-box">
-          <canvas id="plat-canvas" style="image-rendering:pixelated;display:block"></canvas>
+        <div style="background:#f0f4f8;border:1px solid var(--color-border);
+                    border-radius:var(--radius-md);padding:8px;overflow:hidden;width:100%;box-sizing:border-box;
+                    box-shadow:inset 0 1px 4px rgba(0,0,0,0.08)">
+          <canvas id="plat-canvas" style="image-rendering:pixelated;display:block;border-radius:4px"></canvas>
         </div>
 
       </div>
