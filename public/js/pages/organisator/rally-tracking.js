@@ -15,21 +15,16 @@ export async function render() {
       <div style="display:flex;gap:8px;align-items:center">
         <span id="tracking-status" class="badge badge-info">laden…</span>
         <button class="btn btn-ghost btn-sm" id="btn-ververs">&#8635; Ververs</button>
-        <button class="btn btn-primary btn-sm" id="btn-genereer-qr">&#128247; Patrouille QR's genereren</button>
       </div>
     </div>
 
     <div id="tracking-berichten"></div>
     <div id="tracking-inhoud"><div class="loading-spinner"></div></div>
-
-    <!-- Modal: patrouille QR codes -->
-    <div id="qr-modal"></div>
   `;
 }
 
 export async function onMount() {
   document.getElementById('btn-ververs').addEventListener('click', () => laadData());
-  document.getElementById('btn-genereer-qr').addEventListener('click', genereerQrCodes);
 
   await laadData();
 
@@ -213,109 +208,6 @@ function renderTracking() {
       </table>
     </div>
   `;
-}
-
-// ── QR codes genereren ────────────────────────────────────────────
-
-async function genereerQrCodes() {
-  const btn = document.getElementById('btn-genereer-qr');
-  btn.disabled = true;
-  btn.textContent = 'Genereren…';
-
-  try {
-    const result = await post('/admin/rally/tokens/genereer', {});
-    toonQrModal(result.tokens || []);
-  } catch (e) {
-    toonBericht('error', e.message);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '&#128247; Patrouille QR\'s genereren';
-  }
-}
-
-function toonQrModal(tokens) {
-  const container = document.getElementById('qr-modal');
-
-  const tegels = tokens.map(t => `
-    <div style="text-align:center;background:var(--color-bg);border:1px solid var(--color-border);
-      border-radius:var(--radius-md);padding:12px;min-width:120px">
-      <div style="font-weight:700;font-size:1.1rem;color:var(--color-primary);margin-bottom:4px">
-        #${t.nummer ?? '?'}
-      </div>
-      <img src="${t.qr_dataurl}" alt="QR patrouille ${t.nummer ?? '?'}"
-        style="width:100px;height:100px;display:block;margin:0 auto 8px">
-      <div class="text-muted text-sm" style="font-size:.7rem;word-break:break-all">${esc(t.url)}</div>
-    </div>
-  `).join('');
-
-  container.innerHTML = `
-    <div class="modal-overlay">
-      <div class="modal" style="max-width:700px;max-height:85vh;display:flex;flex-direction:column">
-        <div class="modal-header">
-          <h3>&#128247; Patrouille QR-codes</h3>
-          <button class="btn-icon" id="qr-modal-sluiten">&#10005;</button>
-        </div>
-        <div class="modal-body" style="overflow-y:auto;flex:1">
-          <p class="text-muted text-sm" style="margin-bottom:12px">
-            Één QR-code per patrouille — geldig voor alle rally-stations zolang het moment open is.
-            Druk deze af en geef ze mee aan de patrouilles.
-          </p>
-          ${tokens.length
-            ? `<div style="display:flex;flex-wrap:wrap;gap:10px">${tegels}</div>`
-            : '<p class="text-muted">Geen patrouilles gevonden met nummer. Wijs eerst nummers toe via de plattegrond.</p>'
-          }
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-ghost" id="qr-modal-sluiten-2">Sluiten</button>
-          ${tokens.length ? '<button class="btn btn-primary" id="btn-print-qr">&#128438; Afdrukken</button>' : ''}
-        </div>
-      </div>
-    </div>
-  `;
-
-  const sluit = () => { container.innerHTML = ''; };
-  document.getElementById('qr-modal-sluiten').addEventListener('click', sluit);
-  document.getElementById('qr-modal-sluiten-2').addEventListener('click', sluit);
-
-  document.getElementById('btn-print-qr')?.addEventListener('click', () => {
-    printQrCodes(tokens);
-  });
-}
-
-function printQrCodes(tokens) {
-  const win = window.open('', '_blank');
-  if (!win) return;
-
-  const items = tokens.map(t => `
-    <div class="kaart">
-      <div class="nummer">#${t.nummer ?? '?'}</div>
-      <img src="${t.qr_dataurl}" alt="QR #${t.nummer ?? '?'}">
-      <div class="label">RSW Rally — Patrouille QR</div>
-    </div>
-  `).join('');
-
-  win.document.write(`<!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8">
-  <title>Patrouille QR codes</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; background: #fff; color: #000; }
-    .grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
-    .kaart { border: 1px solid #ccc; border-radius: 6px; padding: 10px; text-align: center; width: 140px; }
-    .kaart img { width: 110px; height: 110px; display: block; margin: 6px auto; }
-    .nummer { font-size: 1.4rem; font-weight: 800; color: #e94560; }
-    .label { font-size: .65rem; color: #666; margin-top: 4px; }
-    @media print { @page { margin: 8mm; } }
-  </style>
-</head>
-<body>
-  <div class="grid">${items}</div>
-  <script>window.onload=()=>window.print()<\/script>
-</body>
-</html>`);
-  win.document.close();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
