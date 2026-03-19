@@ -3,6 +3,7 @@
 import { get, post, put, del } from '../../services/api.js';
 import { escapeHtml } from '../../utils/escape.js';
 import { laadPdfMake } from '../../services/pdf.js';
+import { laadJSZip }   from '../../services/zip.js';
 
 const JURY_BASE  = '/admin/jury';
 const CAT_BASE   = '/admin/editie-categorieen';
@@ -128,6 +129,7 @@ export async function render() {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" id="pdf-annuleer">Annuleren</button>
+          <button type="button" class="btn btn-ghost" id="zip-download">&#128230; JPG ZIP</button>
           <button type="button" class="btn btn-primary" id="pdf-download">&#128229; PDF downloaden</button>
         </div>
       </div>
@@ -580,6 +582,7 @@ function openPdfDialog(type, items, label) {
   document.getElementById('pdf-sluiten').onclick  = sluitPdfDialog;
   document.getElementById('pdf-annuleer').onclick = sluitPdfDialog;
   document.getElementById('pdf-download').onclick = genereerPdf;
+  document.getElementById('zip-download').onclick = exportZip;
   document.getElementById('pdf-kolommen').oninput = updatePdfPreview;
   document.getElementById('pdf-rijen').oninput    = updatePdfPreview;
 }
@@ -595,8 +598,16 @@ function updatePdfPreview() {
   const perPagina = k * r;
   const totaal    = pdfDialogData?.items.length ?? 0;
   const paginas   = totaal ? Math.ceil(totaal / perPagina) : 0;
+
+  // Sticker afmetingen in mm (A4 portrait, 20pt marges, 0.5pt borders)
+  const PT_MM = 25.4 / 72;
+  const celW  = Math.floor((555 - (k + 1) * 0.5 - 1) / k);
+  const celH  = Math.floor((802 - (r + 1) * 0.5 - 1) / r);
+  const bMM   = Math.round(celW * PT_MM);
+  const hMM   = Math.round(celH * PT_MM);
+
   document.getElementById('pdf-preview').textContent =
-    `${perPagina} stickers per pagina · ${paginas} pagina${paginas !== 1 ? "'s" : ''}`;
+    `${perPagina} per pagina · ${paginas} pagina${paginas !== 1 ? "'s" : ''} · sticker ~${bMM} × ${hMM} mm`;
 }
 
 async function genereerPdf() {
@@ -615,17 +626,85 @@ async function genereerPdf() {
   }
 }
 
+async function exportZip() {
+  if (!pdfDialogData) return;
+  const btn = document.getElementById('zip-download');
+  btn.disabled = true; btn.textContent = 'Bezig…';
+  try {
+    await laadJSZip();
+    const zip  = new JSZip();
+    const type = pdfDialogData.type;
+
+    for (let i = 0; i < pdfDialogData.items.length; i++) {
+      const item    = pdfDialogData.items[i];
+      if (!item.qr_dataurl) continue;
+      const jpgB64  = await dataUrlNaarJpgB64(item.qr_dataurl);
+      const bestand = type === 'patrouilles'
+        ? `patrouille_${String(item.nummer ?? i + 1).padStart(3, '0')}.jpg`
+        : `${String(i + 1).padStart(3, '0')}_${(item.naam ?? 'station').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_')}.jpg`;
+      zip.file(bestand, jpgB64, { base64: true });
+    }
+
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = type === 'patrouilles' ? 'patrouille-qr.zip' : 'station-qr.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    toon('error', 'ZIP genereren mislukt: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '&#128230; JPG ZIP';
+  }
+}
+
+function dataUrlNaarJpgB64(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img    = new Image();
+    img.onload   = () => {
+      const canvas  = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx     = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; // witte achtergrond (JPG heeft geen transparantie)
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.95).split(',')[1]);
+    };
+    img.onerror  = () => reject(new Error('QR afbeelding kon niet worden geladen.'));
+    img.src      = dataUrl;
+  });
+}
+
 async function maakStickerPdf(type, items, kolommen, rijen) {
   await laadPdfMake();
 
   // A4 portrait: 595 × 842 pt, marges 20pt → 555 × 802 bruikbaar
-  const PAGE_W = 555;
-  const PAGE_H = 802;
-  const CEL_W  = Math.floor(PAGE_W / kolommen);
-  const CEL_H  = Math.floor(PAGE_H / rijen);
-  const PAD    = 6;
-  const tekstH = type === 'patrouilles' ? 44 : 58;
-  const qrMaat = Math.max(20, Math.min(CEL_W - PAD * 2, CEL_H - PAD * 2 - tekstH, 120));
+  // Trek borders af: (N+1) lijnen × 0.5pt per richting, plus 1pt veiligheidsbuffer
+  const PAGE_W    = 555;
+  const PAGE_H    = 802;
+  const BORDER    = 0.5;
+  const CEL_W     = Math.floor((PAGE_W - (kolommen + 1) * BORDER - 1) / kolommen);
+  const CEL_H     = Math.floor((PAGE_H - (rijen    + 1) * BORDER - 1) / rijen);
+  const PAD       = 5;
+  const perPagina = kolommen * rijen;
+
+  // Reserveer minimale tekstruimte; de rest gaat naar de QR
+  // patrouilles: nummer (12pt) + label (8pt) + margins ≈ 30pt
+  // stations:    naam (10pt) + meta (max 3 regels × 9pt) + margins ≈ 45pt
+  const tekstH = type === 'patrouilles' ? 30 : 45;
+  const qrMaat = Math.max(20, Math.min(CEL_W - PAD * 2, CEL_H - PAD * 2 - tekstH));
+
+  const tabelLayout = {
+    hLineWidth: () => BORDER,
+    vLineWidth: () => BORDER,
+    hLineColor: () => '#bbbbbb',
+    vLineColor: () => '#bbbbbb',
+    paddingLeft:   () => 0,
+    paddingRight:  () => 0,
+    paddingTop:    () => 0,
+    paddingBottom: () => 0,
+  };
 
   function bouwCel(item) {
     if (!item) return { text: '', border: [true, true, true, true] };
@@ -633,9 +712,9 @@ async function maakStickerPdf(type, items, kolommen, rijen) {
     if (type === 'patrouilles') {
       return {
         stack: [
-          { text: `#${item.nummer ?? '?'}`, fontSize: Math.min(22, Math.max(10, Math.round(qrMaat * 0.15))), bold: true, color: '#e94560', alignment: 'center' },
-          { image: item.qr_dataurl, width: qrMaat, height: qrMaat, alignment: 'center', margin: [0, 4, 0, 4] },
-          { text: 'RSW Rally', fontSize: 7, color: '#888888', alignment: 'center' },
+          { text: `#${item.nummer ?? '?'}`, fontSize: 12, bold: true, color: '#e94560', alignment: 'center', margin: [0, 0, 0, 2] },
+          { image: item.qr_dataurl, width: qrMaat, height: qrMaat, alignment: 'center' },
+          { text: 'RSW Rally', fontSize: 7, color: '#888888', alignment: 'center', margin: [0, 2, 0, 0] },
         ],
         margin: [PAD, PAD, PAD, PAD],
         border: [true, true, true, true],
@@ -645,16 +724,15 @@ async function maakStickerPdf(type, items, kolommen, rijen) {
     // stations
     const juryCrit  = (item.criteria || []).filter(c => !c.is_aankomst).map(c => c.criterium_naam).join(', ');
     const bonusCrit = (item.criteria || []).filter(c => c.is_aankomst);
-    const naamFs    = Math.min(11, Math.max(7, Math.round(qrMaat * 0.09 + 5)));
     const stack = [
-      { text: item.naam, fontSize: naamFs, bold: true, alignment: 'center' },
-      { image: item.qr_dataurl, width: qrMaat, height: qrMaat, alignment: 'center', margin: [0, 4, 0, 4] },
+      { text: item.naam, fontSize: 9, bold: true, alignment: 'center', margin: [0, 0, 0, 2] },
+      { image: item.qr_dataurl, width: qrMaat, height: qrMaat, alignment: 'center' },
     ];
-    if (item.categorie_naam) stack.push({ text: item.categorie_naam, fontSize: 7, color: '#555555', alignment: 'center' });
-    if (juryCrit)            stack.push({ text: juryCrit, fontSize: 7, color: '#333333', alignment: 'center', margin: [0, 2, 0, 0] });
+    if (item.categorie_naam) stack.push({ text: item.categorie_naam, fontSize: 7, color: '#555555', alignment: 'center', margin: [0, 2, 0, 0] });
+    if (juryCrit)            stack.push({ text: juryCrit, fontSize: 7, color: '#333333', alignment: 'center' });
     if (bonusCrit.length)    stack.push({
       text: bonusCrit.map(c => `\u25b6 ${c.criterium_naam} +${c.aankomst_punten}p`).join('  '),
-      fontSize: 7, color: '#cc3333', bold: true, alignment: 'center', margin: [0, 2, 0, 0],
+      fontSize: 7, color: '#cc3333', bold: true, alignment: 'center',
     });
 
     return {
@@ -664,35 +742,34 @@ async function maakStickerPdf(type, items, kolommen, rijen) {
     };
   }
 
-  // Vul items aan tot veelvoud van kolommen
-  const gevuld = [...items];
-  while (gevuld.length % kolommen) gevuld.push(null);
+  // Genereer één tabel per pagina zodat elke pagina exact rijen × kolommen cellen heeft
+  const content = [];
+  for (let p = 0; p * perPagina < items.length; p++) {
+    const chunk = items.slice(p * perPagina, (p + 1) * perPagina);
+    // Vul op tot volledige pagina
+    while (chunk.length < perPagina) chunk.push(null);
 
-  const body = [];
-  for (let i = 0; i < gevuld.length; i += kolommen) {
-    body.push(gevuld.slice(i, i + kolommen).map(bouwCel));
+    const body = [];
+    for (let i = 0; i < chunk.length; i += kolommen) {
+      body.push(chunk.slice(i, i + kolommen).map(bouwCel));
+    }
+
+    const tabel = {
+      table: {
+        widths:  Array(kolommen).fill(CEL_W),
+        heights: Array(rijen).fill(CEL_H),
+        body,
+      },
+      layout: tabelLayout,
+    };
+    if (p > 0) tabel.pageBreak = 'before';
+    content.push(tabel);
   }
 
   pdfMake.createPdf({
     pageSize: 'A4',
     pageMargins: [20, 20, 20, 20],
-    content: [{
-      table: {
-        widths:  Array(kolommen).fill('*'),
-        heights: Array(body.length).fill(CEL_H),
-        body,
-      },
-      layout: {
-        hLineWidth: () => 0.5,
-        vLineWidth: () => 0.5,
-        hLineColor: () => '#bbbbbb',
-        vLineColor: () => '#bbbbbb',
-        paddingLeft:   () => 0,
-        paddingRight:  () => 0,
-        paddingTop:    () => 0,
-        paddingBottom: () => 0,
-      },
-    }],
+    content,
   }).download(type === 'patrouilles' ? 'patrouille-qr.pdf' : 'station-qr.pdf');
 }
 
