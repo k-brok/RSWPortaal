@@ -3,6 +3,7 @@
 import { get, post, put, del, patch } from '../services/api.js';
 import { escapeHtml } from '../utils/escape.js';
 import { getUser } from '../services/auth.js';
+import { drukScorekaartAf, drukAlleScorekaarten } from '../services/scorekaart-pdf.js';
 
 // ── State ──────────────────────────────────────────────────────────
 let leidingStatus = null;  // { editie, fase, patrouilles }
@@ -130,6 +131,7 @@ function leidingKaart(p, fase, editie) {
           ${jongsteBadge} ${aantalBadge} ${bmBadge}
         </div>
         <div style="display:flex;gap:6px">
+          ${editie.uitslagen_gepubliceerd ? `<button class="btn btn-ghost btn-sm btn-scorekaart-pat" data-id="${p.id}">&#128438; Scorekaart</button>` : ''}
           ${fase !== 'gesloten' ? `<button class="btn btn-ghost btn-sm btn-edit-pat" data-id="${p.id}">&#9999;&#65039; Naam wijzigen</button>` : ''}
           ${fase === 'voorinschrijving' ? `<button class="btn btn-ghost btn-sm btn-del-pat" data-id="${p.id}" data-naam="${escapeHtml(p.naam)}"
             style="color:var(--color-error)">&#128465; Verwijderen</button>` : ''}
@@ -144,6 +146,15 @@ function leidingKaart(p, fase, editie) {
 }
 
 function bindLeidingEvents(fase, editie) {
+  document.querySelectorAll('.btn-scorekaart-pat').forEach(btn =>
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Laden…';
+      try { await drukScorekaartAf(Number(btn.dataset.id)); }
+      catch (e) { alert('Fout bij genereren scorekaart: ' + e.message); }
+      finally { btn.disabled = false; btn.innerHTML = '&#128438; Scorekaart'; }
+    })
+  );
   document.querySelectorAll('.btn-edit-pat').forEach(btn =>
     btn.addEventListener('click', () => {
       const p = leidingStatus.patrouilles.find(x => x.id === Number(btn.dataset.id));
@@ -416,7 +427,10 @@ function renderOrgPagina() {
   el.innerHTML = `
     <div class="page-header">
       <h1>Inschrijvingen ${escapeHtml(editie.naam)}</h1>
-      <button class="btn btn-primary" id="btn-nieuw-pat">+ Patrouille</button>
+      <div style="display:flex;gap:8px">
+        ${patrouilles.length ? `<button class="btn btn-outline" id="btn-alle-scorekaarten">&#128438; Alle scorekaarten</button>` : ''}
+        <button class="btn btn-primary" id="btn-nieuw-pat">+ Patrouille</button>
+      </div>
     </div>
     <div class="stats-row" style="margin-bottom:12px">
       <div class="stat-chip"><strong>${patrouilles.length}</strong> patrouilles</div>
@@ -464,6 +478,7 @@ function orgRijHtml(p, editie) {
       <td style="text-align:center">${p.aantal_deelnemers}</td>
       <td>${bm}${p.bm_reden ? `<br><small class="text-muted">${escapeHtml(p.bm_reden)}</small>` : ''}</td>
       <td><div style="display:flex;gap:4px" onclick="event.stopPropagation()">
+        <button class="btn btn-sm btn-ghost" data-actie="scorekaart" data-id="${p.id}" title="Scorekaart printen">&#128438;</button>
         <button class="btn btn-sm btn-outline" data-actie="bewerk" data-id="${p.id}">Bewerk</button>
         <button class="btn btn-sm btn-danger" data-actie="verwijder" data-id="${p.id}">Verwijder</button>
       </div></td>
@@ -477,6 +492,18 @@ function orgRijHtml(p, editie) {
 
 function bindOrgPagina(editie) {
   document.getElementById('btn-nieuw-pat')?.addEventListener('click', () => openOrgPatModal(null, editie.id));
+
+  const btnAlle = document.getElementById('btn-alle-scorekaarten');
+  if (btnAlle) {
+    btnAlle.addEventListener('click', async () => {
+      const ids = orgData.patrouilles.map(p => p.id);
+      btnAlle.disabled = true;
+      btnAlle.textContent = `Laden… (0/${ids.length})`;
+      try { await drukAlleScorekaarten(ids, (n) => { btnAlle.textContent = `Laden… (${n}/${ids.length})`; }); }
+      catch (e) { toonBericht('error', 'Fout bij genereren: ' + e.message); }
+      finally { btnAlle.disabled = false; btnAlle.innerHTML = '&#128438; Alle scorekaarten'; }
+    });
+  }
 
   document.querySelectorAll('.pat-rij').forEach(rij => {
     rij.addEventListener('click', () => toggleDetail(Number(rij.dataset.patId), editie));
@@ -511,7 +538,12 @@ function bindOrgPagina(editie) {
   document.querySelectorAll('[data-actie]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = Number(btn.dataset.id);
-      if (btn.dataset.actie === 'bewerk') {
+      if (btn.dataset.actie === 'scorekaart') {
+        btn.disabled = true;
+        try { await drukScorekaartAf(id); }
+        catch (e) { toonBericht('error', 'Fout bij genereren scorekaart: ' + e.message); }
+        finally { btn.disabled = false; }
+      } else if (btn.dataset.actie === 'bewerk') {
         const p = orgData.patrouilles.find(x => x.id === id);
         if (p) openOrgPatModal(p, editie.id);
       } else if (btn.dataset.actie === 'verwijder') {
