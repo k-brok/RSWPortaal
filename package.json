@@ -10,7 +10,14 @@
     "start": "NODE_ENV=production node src/app.js",
     "migrate": "node src/config/migrate.js",
     "seed": "node db/seeds/001_testdata.js",
-    "migrate:seed": "npm run migrate && npm run seed"
+    "migrate:seed": "npm run migrate && npm run seed",
+    "version:patch": "./scripts/bump-version.sh patch",
+    "version:minor": "./scripts/bump-version.sh minor",
+    "version:major": "./scripts/bump-version.sh major",
+    "feature": "./scripts/start-feature.sh",
+    "release:start": "./scripts/start-release.sh",
+    "release:finish": "./scripts/finish-release.sh",
+    "hotfix": "./scripts/start-hotfix.sh"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

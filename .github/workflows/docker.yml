@@ -1,0 +1,78 @@
+name: Docker Build & Push
+
+on:
+  push:
+    branches:
+      - develop
+      - 'release/**'
+      - master
+    tags:
+      - 'v*.*.*'
+
+env:
+  IMAGE_NAME: chunkk/rsw-portaal
+
+jobs:
+  build-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract versie uit package.json
+        id: pkg
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # ── Docker metadata (tags + labels) ──────────────────────────────
+      # develop  → :develop, :develop-<sha7>
+      # release/* → :1.2.0-rc
+      # v1.2.0 tag op master → :1.2.0, :1.2, :1, :latest
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # develop branch
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=sha,prefix=develop-,format=short,enable=${{ github.ref == 'refs/heads/develop' }}
+
+            # release/* branch  →  <version>-rc
+            type=raw,value=${{ steps.pkg.outputs.version }}-rc,enable=${{ startsWith(github.ref, 'refs/heads/release/') }}
+
+            # Git tag v*.*.*  →  semver tags
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(steps.pkg.outputs.version, '0.') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+          labels: |
+            org.opencontainers.image.title=RSW Portaal
+            org.opencontainers.image.description=Regionale Scouting Wedstrijden — Regio De Langstraat
+            org.opencontainers.image.vendor=CHUNKK
+            org.opencontainers.image.version=${{ steps.pkg.outputs.version }}
+
+      - name: Login naar Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.pkg.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
