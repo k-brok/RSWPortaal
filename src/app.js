@@ -94,6 +94,8 @@ app.use('/api/admin/vrijwilligers', require('./routes/admin.vrijwilligers.routes
 app.use('/api/admin/vrijwilliger-vacatures', require('./routes/admin.vrijwilliger-vacatures.routes'));
 app.use('/api/admin/aanvragen', require('./routes/admin.aanvragen.routes'));
 app.use('/api/vrijwilliger',        require('./routes/vrijwilliger.routes'));
+app.use('/api/catering',            require('./routes/catering.routes'));
+app.use('/api/admin/catering',      require('./routes/admin.catering.routes'));
 app.use('/api/publiek',             require('./routes/publiek.routes'));
 app.use('/api/rally',               require('./routes/rally.routes'));
 app.use('/api/admin/rally',         require('./routes/admin.rally.routes'));

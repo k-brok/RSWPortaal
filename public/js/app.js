@@ -27,6 +27,9 @@ const routes = {
   // Inschrijvingen (leiding + organisator/admin)
   '/inschrijvingen':     () => import(`./pages/inschrijvingen.js?v=${V}`),
 
+  // Catering (leiding + vrijwilliger)
+  '/catering':           () => import(`./pages/catering.js?v=${V}`),
+
   // Edities (admin: volledig | organisator: bewerken)
   '/edities':            () => import(`./pages/edities.js?v=${V}`),
 
@@ -49,6 +52,7 @@ const routes = {
   '/organisator/jury':         () => import(`./pages/organisator/jury.js?v=${V}`),
   '/organisator/vrijwilligers': () => import(`./pages/organisator/vrijwilligers.js?v=${V}`),
   '/organisator/aanvragen':    () => import(`./pages/organisator/aanvragen.js?v=${V}`),
+  '/organisator/catering':     () => import(`./pages/organisator/catering.js?v=${V}`),
   '/organisator/rally-beheer':   () => import(`./pages/organisator/rally-beheer.js?v=${V}`),
   '/organisator/rally-tracking': () => import(`./pages/organisator/rally-tracking.js?v=${V}`),
 

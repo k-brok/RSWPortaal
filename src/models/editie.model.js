@@ -9,6 +9,7 @@ const KOLOMMEN = `
   min_scouts, max_scouts, min_leeftijd, max_leeftijd,
   ouderen_leeftijd, max_ouderen_klein, max_ouderen_groot, ouderen_grens,
   bm_label, bm_max_positie,
+  catering_actief, catering_prijs_leiding, catering_prijs_vrijwilliger,
   aangemaakt_op, bijgewerkt_op
 `;
 
