@@ -102,9 +102,9 @@ export async function render() {
 
     <!-- Modal: PDF afdrukopties -->
     <div id="pdf-modal" class="modal-backdrop" style="display:none">
-      <div class="modal" style="max-width:420px;width:100%">
+      <div class="modal" style="max-width:500px;width:100%">
         <div class="modal-header">
-          <h2>&#128438; PDF afdrukken</h2>
+          <h2>&#128228; QR codes exporteren</h2>
           <button type="button" id="pdf-sluiten" class="modal-sluit">&#10005;</button>
         </div>
         <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
@@ -561,7 +561,7 @@ async function genereerPatrouilleQrs() {
   } catch (e) {
     toon('error', 'Fout: ' + e.message);
   } finally {
-    btn.disabled = false; btn.textContent = '&#128438; Patrouille QR\'s';
+    btn.disabled = false; btn.innerHTML = '&#128438; Patrouille QR\'s';
   }
 }
 
