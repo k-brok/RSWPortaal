@@ -2,6 +2,8 @@
 
 import { get, post, put, del } from '../../services/api.js';
 import { escapeHtml } from '../../utils/escape.js';
+import { laadPdfMake } from '../../services/pdf.js';
+import { laadJSZip }   from '../../services/zip.js';
 
 const JURY_BASE  = '/admin/jury';
 const CAT_BASE   = '/admin/editie-categorieen';
@@ -14,11 +16,16 @@ let categorieen = [];
 // stationsCache[momentId] = [{ id, naam, criteria[], qr_dataurl, ... }]
 let stationsCache = {};
 
+let pdfDialogData = null; // { type: 'patrouilles'|'stations', items: [], label: '' }
+
 export async function render() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
       <div class="page-header-left"><h1>&#128204; Rally beheer</h1></div>
-      <button class="btn btn-primary" id="btn-nieuw-moment">+ Nieuw rally moment</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" id="btn-patrouille-qr">&#128438; Patrouille QR's</button>
+        <button class="btn btn-primary" id="btn-nieuw-moment">+ Nieuw rally moment</button>
+      </div>
     </div>
     <div id="rally-berichten"></div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
@@ -92,6 +99,41 @@ export async function render() {
         </form>
       </div>
     </div>
+
+    <!-- Modal: PDF afdrukopties -->
+    <div id="pdf-modal" class="modal-backdrop" style="display:none">
+      <div class="modal" style="max-width:500px;width:100%">
+        <div class="modal-header">
+          <h2>&#128228; QR codes exporteren</h2>
+          <button type="button" id="pdf-sluiten" class="modal-sluit">&#10005;</button>
+        </div>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div class="form-label" id="pdf-type-label" style="font-weight:600;margin-bottom:2px"></div>
+            <div class="text-muted text-sm" id="pdf-aantal-label"></div>
+          </div>
+          <div>
+            <div class="form-label" style="margin-bottom:8px">Stickervel indeling</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label class="form-label" style="font-size:.8rem">Kolommen</label>
+                <input type="number" id="pdf-kolommen" class="form-input" min="1" max="8" value="3">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size:.8rem">Rijen per pagina</label>
+                <input type="number" id="pdf-rijen" class="form-input" min="1" max="12" value="4">
+              </div>
+            </div>
+            <div class="text-muted text-sm" id="pdf-preview" style="margin-top:8px"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="pdf-annuleer">Annuleren</button>
+          <button type="button" class="btn btn-ghost" id="zip-download">&#128230; JPG ZIP</button>
+          <button type="button" class="btn btn-primary" id="pdf-download">&#128229; PDF downloaden</button>
+        </div>
+      </div>
+    </div>
   `;
 
   document.querySelectorAll('.modal-sluit').forEach(btn => {
@@ -103,6 +145,7 @@ export async function render() {
     if (!editieId) { toon('error', 'Selecteer eerst een editie'); return; }
     openMomentModal(null);
   });
+  document.getElementById('btn-patrouille-qr').addEventListener('click', genereerPatrouilleQrs);
 }
 
 // ── Edities & momenten ─────────────────────────────────────────────
@@ -300,7 +343,10 @@ function bindActies() {
         return;
       }
       if (actie === 'print-qr') {
-        printStationQrs(id, stationsCache[id] || [], momenten.find(x => x.id === id));
+        const moment   = momenten.find(x => x.id === id);
+        const stations = (stationsCache[id] || []).filter(s => s.qr_dataurl);
+        if (!stations.length) { toon('error', 'Geen QR codes beschikbaar.'); return; }
+        openPdfDialog('stations', stations.map(s => ({ ...s, categorie_naam: moment?.categorie_naam || '' })), moment?.naam || moment?.categorie_naam || 'Stations');
         return;
       }
     });
@@ -498,51 +544,233 @@ async function openStationModal(station, momentId) {
   };
 }
 
-// ── Print station QR's ─────────────────────────────────────────────
+// ── Patrouille QR's ophalen ────────────────────────────────────────
 
-function printStationQrs(momentId, stations, m) {
-  const metQr = stations.filter(s => s.qr_dataurl);
-  if (!metQr.length) { toon('error', 'Geen QR codes beschikbaar.'); return; }
+async function genereerPatrouilleQrs() {
+  if (!editieId) { toon('error', 'Selecteer eerst een editie.'); return; }
+  const btn = document.getElementById('btn-patrouille-qr');
+  btn.disabled = true; btn.textContent = 'Laden…';
+  try {
+    const result = await post(`${RALLY_BASE}/tokens/genereer`, { editie_id: editieId });
+    const tokens = result.tokens || [];
+    if (!tokens.length) {
+      toon('error', 'Geen patrouilles met nummers gevonden. Wijs eerst nummers toe via de plattegrond.');
+      return;
+    }
+    openPdfDialog('patrouilles', tokens, `${tokens.length} patrouilles`);
+  } catch (e) {
+    toon('error', 'Fout: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '&#128438; Patrouille QR\'s';
+  }
+}
 
-  const labels = metQr.map(s => {
-    const juryCrit    = (s.criteria || []).filter(c => !c.is_aankomst);
-    const aankomstCr  = (s.criteria || []).filter(c => c.is_aankomst);
-    const critNamen   = juryCrit.map(c => escapeHtml(c.criterium_naam)).join(', ') || '—';
-    const bonusBadge  = aankomstCr.length
-      ? `<div class="qr-bonus">&#9654; ${aankomstCr.map(c => `${escapeHtml(c.criterium_naam)} +${c.aankomst_punten}p`).join(', ')}</div>` : '';
-    return `
-      <div class="qr-label">
-        <div class="qr-naam">${escapeHtml(s.naam)}</div>
-        <img src="${s.qr_dataurl}" width="140" height="140">
-        <div class="qr-cat">${escapeHtml(m?.categorie_naam || '')}</div>
-        <div class="qr-crit">${critNamen}</div>
-        ${bonusBadge}
-      </div>`;
-  }).join('');
+// ── PDF dialog ─────────────────────────────────────────────────────
 
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-    <title>Station QR codes — ${escapeHtml(m?.naam || m?.categorie_naam || '')}</title>
-    <style>
-      body { margin:0; font-family:sans-serif; background:#fff; color:#000; }
-      .grid { display:flex; flex-wrap:wrap; gap:10px; padding:12px; }
-      .qr-label { width:180px; border:2px solid #333; border-radius:6px; padding:8px;
-        display:flex; flex-direction:column; align-items:center; page-break-inside:avoid; }
-      .qr-naam { font-size:.95rem; font-weight:700; text-align:center; margin-bottom:6px; }
-      .qr-cat  { font-size:.7rem; color:#555; margin-top:4px; text-align:center; }
-      .qr-crit { font-size:.68rem; color:#333; margin-top:3px; text-align:center; }
-      .qr-bonus{ font-size:.72rem; color:#e44; font-weight:600; margin-top:2px; }
-      .no-print{ padding:10px; background:#eee; margin-bottom:8px; display:flex; gap:8px; align-items:center; }
-      @media print { .no-print { display:none; } }
-    </style>
-  </head><body>
-    <div class="no-print">
-      <strong>Station QR labels — ${escapeHtml(m?.naam || m?.categorie_naam || '')}</strong>
-      <button onclick="window.print()">&#128438; Afdrukken</button>
-    </div>
-    <div class="grid">${labels}</div>
-  </body></html>`);
-  win.document.close();
+function openPdfDialog(type, items, label) {
+  pdfDialogData = { type, items, label };
+
+  document.getElementById('pdf-type-label').textContent =
+    type === 'patrouilles' ? 'Patrouille QR-codes' : `Station QR-codes — ${label}`;
+  document.getElementById('pdf-aantal-label').textContent = `${items.length} stickers`;
+
+  updatePdfPreview();
+
+  const modal = document.getElementById('pdf-modal');
+  modal.style.display = 'flex';
+
+  document.getElementById('pdf-sluiten').onclick  = sluitPdfDialog;
+  document.getElementById('pdf-annuleer').onclick = sluitPdfDialog;
+  document.getElementById('pdf-download').onclick = genereerPdf;
+  document.getElementById('zip-download').onclick = exportZip;
+  document.getElementById('pdf-kolommen').oninput = updatePdfPreview;
+  document.getElementById('pdf-rijen').oninput    = updatePdfPreview;
+}
+
+function sluitPdfDialog() {
+  document.getElementById('pdf-modal').style.display = 'none';
+  pdfDialogData = null;
+}
+
+function updatePdfPreview() {
+  const k         = Math.max(1, Number(document.getElementById('pdf-kolommen').value) || 3);
+  const r         = Math.max(1, Number(document.getElementById('pdf-rijen').value) || 4);
+  const perPagina = k * r;
+  const totaal    = pdfDialogData?.items.length ?? 0;
+  const paginas   = totaal ? Math.ceil(totaal / perPagina) : 0;
+
+  // Sticker afmetingen in mm (A4 portrait, 20pt marges, 0.5pt borders)
+  const PT_MM = 25.4 / 72;
+  const celW  = Math.floor((555 - (k + 1) * 0.5 - 1) / k);
+  const celH  = Math.floor((802 - (r + 1) * 0.5 - 1) / r);
+  const bMM   = Math.round(celW * PT_MM);
+  const hMM   = Math.round(celH * PT_MM);
+
+  document.getElementById('pdf-preview').textContent =
+    `${perPagina} per pagina · ${paginas} pagina${paginas !== 1 ? "'s" : ''} · sticker ~${bMM} × ${hMM} mm`;
+}
+
+async function genereerPdf() {
+  if (!pdfDialogData) return;
+  const btn = document.getElementById('pdf-download');
+  btn.disabled = true; btn.textContent = 'Bezig…';
+  try {
+    const k = Math.max(1, Number(document.getElementById('pdf-kolommen').value) || 3);
+    const r = Math.max(1, Number(document.getElementById('pdf-rijen').value) || 4);
+    await maakStickerPdf(pdfDialogData.type, pdfDialogData.items, k, r);
+    sluitPdfDialog();
+  } catch (e) {
+    toon('error', 'PDF genereren mislukt: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '&#128229; PDF downloaden';
+  }
+}
+
+async function exportZip() {
+  if (!pdfDialogData) return;
+  const btn = document.getElementById('zip-download');
+  btn.disabled = true; btn.textContent = 'Bezig…';
+  try {
+    await laadJSZip();
+    const zip  = new JSZip();
+    const type = pdfDialogData.type;
+
+    for (let i = 0; i < pdfDialogData.items.length; i++) {
+      const item    = pdfDialogData.items[i];
+      if (!item.qr_dataurl) continue;
+      const jpgB64  = await dataUrlNaarJpgB64(item.qr_dataurl);
+      const bestand = type === 'patrouilles'
+        ? `patrouille_${String(item.nummer ?? i + 1).padStart(3, '0')}.jpg`
+        : `${String(i + 1).padStart(3, '0')}_${(item.naam ?? 'station').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_')}.jpg`;
+      zip.file(bestand, jpgB64, { base64: true });
+    }
+
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = type === 'patrouilles' ? 'patrouille-qr.zip' : 'station-qr.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    toon('error', 'ZIP genereren mislukt: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '&#128230; JPG ZIP';
+  }
+}
+
+function dataUrlNaarJpgB64(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img    = new Image();
+    img.onload   = () => {
+      const canvas  = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx     = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; // witte achtergrond (JPG heeft geen transparantie)
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.95).split(',')[1]);
+    };
+    img.onerror  = () => reject(new Error('QR afbeelding kon niet worden geladen.'));
+    img.src      = dataUrl;
+  });
+}
+
+async function maakStickerPdf(type, items, kolommen, rijen) {
+  await laadPdfMake();
+
+  // A4 portrait: 595 × 842 pt, marges 20pt → 555 × 802 bruikbaar
+  // Trek borders af: (N+1) lijnen × 0.5pt per richting, plus 1pt veiligheidsbuffer
+  const PAGE_W    = 555;
+  const PAGE_H    = 802;
+  const BORDER    = 0.5;
+  const CEL_W     = Math.floor((PAGE_W - (kolommen + 1) * BORDER - 1) / kolommen);
+  const CEL_H     = Math.floor((PAGE_H - (rijen    + 1) * BORDER - 1) / rijen);
+  const PAD       = 5;
+  const perPagina = kolommen * rijen;
+
+  // Reserveer minimale tekstruimte; de rest gaat naar de QR
+  // patrouilles: nummer (12pt) + label (8pt) + margins ≈ 30pt
+  // stations:    naam (10pt) + meta (max 3 regels × 9pt) + margins ≈ 45pt
+  const tekstH = type === 'patrouilles' ? 30 : 45;
+  const qrMaat = Math.max(20, Math.min(CEL_W - PAD * 2, CEL_H - PAD * 2 - tekstH));
+
+  const tabelLayout = {
+    hLineWidth: () => BORDER,
+    vLineWidth: () => BORDER,
+    hLineColor: () => '#bbbbbb',
+    vLineColor: () => '#bbbbbb',
+    paddingLeft:   () => 0,
+    paddingRight:  () => 0,
+    paddingTop:    () => 0,
+    paddingBottom: () => 0,
+  };
+
+  function bouwCel(item) {
+    if (!item) return { text: '', border: [true, true, true, true] };
+
+    if (type === 'patrouilles') {
+      return {
+        stack: [
+          { text: `#${item.nummer ?? '?'}`, fontSize: 12, bold: true, color: '#e94560', alignment: 'center', margin: [0, 0, 0, 2] },
+          { image: item.qr_dataurl, width: qrMaat, height: qrMaat, alignment: 'center' },
+          { text: 'RSW Rally', fontSize: 7, color: '#888888', alignment: 'center', margin: [0, 2, 0, 0] },
+        ],
+        margin: [PAD, PAD, PAD, PAD],
+        border: [true, true, true, true],
+      };
+    }
+
+    // stations
+    const juryCrit  = (item.criteria || []).filter(c => !c.is_aankomst).map(c => c.criterium_naam).join(', ');
+    const bonusCrit = (item.criteria || []).filter(c => c.is_aankomst);
+    const stack = [
+      { text: item.naam, fontSize: 9, bold: true, alignment: 'center', margin: [0, 0, 0, 2] },
+      { image: item.qr_dataurl, width: qrMaat, height: qrMaat, alignment: 'center' },
+    ];
+    if (item.categorie_naam) stack.push({ text: item.categorie_naam, fontSize: 7, color: '#555555', alignment: 'center', margin: [0, 2, 0, 0] });
+    if (juryCrit)            stack.push({ text: juryCrit, fontSize: 7, color: '#333333', alignment: 'center' });
+    if (bonusCrit.length)    stack.push({
+      text: bonusCrit.map(c => `\u25b6 ${c.criterium_naam} +${c.aankomst_punten}p`).join('  '),
+      fontSize: 7, color: '#cc3333', bold: true, alignment: 'center',
+    });
+
+    return {
+      stack,
+      margin: [PAD, PAD, PAD, PAD],
+      border: [true, true, true, true],
+    };
+  }
+
+  // Genereer één tabel per pagina zodat elke pagina exact rijen × kolommen cellen heeft
+  const content = [];
+  for (let p = 0; p * perPagina < items.length; p++) {
+    const chunk = items.slice(p * perPagina, (p + 1) * perPagina);
+    // Vul op tot volledige pagina
+    while (chunk.length < perPagina) chunk.push(null);
+
+    const body = [];
+    for (let i = 0; i < chunk.length; i += kolommen) {
+      body.push(chunk.slice(i, i + kolommen).map(bouwCel));
+    }
+
+    const tabel = {
+      table: {
+        widths:  Array(kolommen).fill(CEL_W),
+        heights: Array(rijen).fill(CEL_H),
+        body,
+      },
+      layout: tabelLayout,
+    };
+    if (p > 0) tabel.pageBreak = 'before';
+    content.push(tabel);
+  }
+
+  pdfMake.createPdf({
+    pageSize: 'A4',
+    pageMargins: [20, 20, 20, 20],
+    content,
+  }).download(type === 'patrouilles' ? 'patrouille-qr.pdf' : 'station-qr.pdf');
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
