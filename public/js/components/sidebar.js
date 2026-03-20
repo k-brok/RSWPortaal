@@ -62,6 +62,10 @@ function buildRolNav() {
           <span class="nav-item-icon">&#128221;</span>
           <span class="nav-item-label">Inschrijving</span>
         </a>
+        <a href="#/catering" class="nav-item" data-route="/catering">
+          <span class="nav-item-icon">&#127859;</span>
+          <span class="nav-item-label">Catering</span>
+        </a>
       </div>
     `);
   }
@@ -77,6 +81,10 @@ function buildRolNav() {
         <a href="#/vrijwilliger/inschrijving" class="nav-item" data-route="/vrijwilliger/inschrijving">
           <span class="nav-item-icon">&#128170;</span>
           <span class="nav-item-label">Mijn inschrijving</span>
+        </a>
+        <a href="#/catering" class="nav-item" data-route="/catering">
+          <span class="nav-item-icon">&#127859;</span>
+          <span class="nav-item-label">Catering</span>
         </a>
       </div>
     `);
@@ -165,6 +173,10 @@ function buildRolNav() {
         <a href="#/organisator/aanvragen" class="nav-item" data-route="/organisator/aanvragen">
           <span class="nav-item-icon">&#128203;</span>
           <span class="nav-item-label">Aanvragen</span>
+        </a>
+        <a href="#/organisator/catering" class="nav-item" data-route="/organisator/catering">
+          <span class="nav-item-icon">&#127859;</span>
+          <span class="nav-item-label">Catering</span>
         </a>
         <a href="#/organisator/rally-beheer" class="nav-item" data-route="/organisator/rally-beheer">
           <span class="nav-item-icon">&#128204;</span>
