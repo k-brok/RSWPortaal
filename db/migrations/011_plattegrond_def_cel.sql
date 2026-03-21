@@ -2,5 +2,5 @@
 -- Sla de standaard celafmeting (in raster-eenheden) op per plattegrond
 
 ALTER TABLE plattegronden
-  ADD COLUMN IF NOT EXISTS def_cel_w INT NOT NULL DEFAULT 3 AFTER snap_grootte,
-  ADD COLUMN IF NOT EXISTS def_cel_h INT NOT NULL DEFAULT 4 AFTER def_cel_w;
+  ADD COLUMN def_cel_w INT NOT NULL DEFAULT 3 AFTER snap_grootte,
+  ADD COLUMN def_cel_h INT NOT NULL DEFAULT 4 AFTER def_cel_w;
