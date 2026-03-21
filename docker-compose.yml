@@ -2,7 +2,7 @@ services:
 
   # ── Applicatie ────────────────────────────────────────────────
   app:
-    image: chunkk/rswportaal:latest
+    image: chunkk/rsw-portaal:latest
     container_name: rsw-app
     restart: unless-stopped
     ports:
