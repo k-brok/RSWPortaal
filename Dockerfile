@@ -15,6 +15,7 @@ RUN npm ci --omit=dev
 # Broncode kopiëren (zonder node_modules en .env via .dockerignore)
 COPY src/ ./src/
 COPY public/ ./public/
+COPY db/ ./db/
 
 # ── Runtime ───────────────────────────────────────────────────────
 FROM node:22-alpine
