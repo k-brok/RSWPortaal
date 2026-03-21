@@ -1,3 +1,8 @@
+# ── Build args (ingevuld door CI/CD) ──────────────────────────────
+ARG APP_VERSION=dev
+ARG GIT_SHA=local
+ARG BUILD_DATE=unknown
+
 # ── Build stage ───────────────────────────────────────────────────
 FROM node:22-alpine AS base
 
@@ -14,14 +19,28 @@ COPY public/ ./public/
 # ── Runtime ───────────────────────────────────────────────────────
 FROM node:22-alpine
 
+# ARGs opnieuw declareren zodat ze beschikbaar zijn in dit stage
+ARG APP_VERSION=dev
+ARG GIT_SHA=local
+ARG BUILD_DATE=unknown
+
 WORKDIR /app
 
 COPY --from=base /app ./
 
-# Poort die de app gebruikt
-EXPOSE 3000
+# OCI-standaard image labels
+LABEL org.opencontainers.image.title="RSW Portaal" \
+      org.opencontainers.image.description="Regionale Scouting Wedstrijden — Regio De Langstraat" \
+      org.opencontainers.image.vendor="CHUNKK" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
 
-# Omgeving instellen (kan worden overschreven via docker-compose / k8s)
-ENV NODE_ENV=production
+# Versie beschikbaar maken als ENV (zichtbaar in runtime logs)
+ENV APP_VERSION=${APP_VERSION} \
+    GIT_SHA=${GIT_SHA} \
+    NODE_ENV=production
+
+EXPOSE 3000
 
 CMD ["node", "src/app.js"]
