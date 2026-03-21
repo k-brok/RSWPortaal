@@ -2,10 +2,10 @@
 -- Voegt ontbrekende kolommen toe aan editie_categorieen (indien nog niet aanwezig)
 
 ALTER TABLE editie_categorieen
-  ADD COLUMN IF NOT EXISTS omschrijving TEXT AFTER naam,
-  ADD COLUMN IF NOT EXISTS wegingspercentage DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER omschrijving,
-  ADD COLUMN IF NOT EXISTS volgorde INT NOT NULL DEFAULT 0 AFTER wegingspercentage,
-  ADD COLUMN IF NOT EXISTS aangemaakt_op TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER volgorde;
+  ADD COLUMN omschrijving TEXT AFTER naam,
+  ADD COLUMN wegingspercentage DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER omschrijving,
+  ADD COLUMN volgorde INT NOT NULL DEFAULT 0 AFTER wegingspercentage,
+  ADD COLUMN aangemaakt_op TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER volgorde;
 
 CREATE TABLE IF NOT EXISTS jurymomenten (
   id INT AUTO_INCREMENT PRIMARY KEY,
