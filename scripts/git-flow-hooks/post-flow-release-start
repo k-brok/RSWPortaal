@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────
+# post-flow-release-start
+#
+# Aangeroepen door: git flow release start
+# Na:               aanmaken van de release branch
+#
+# Verhoogt package.json naar de release versie en commit dit
+# op de release branch.
+# ─────────────────────────────────────────────────────────────────
+
+# Versie afleiden uit de huidige branch naam (release/1.2.0 of release/v1.2.0)
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+VERSION=$(echo "$BRANCH" | sed 's|release/v\?||')
+
+if [ -z "$VERSION" ]; then
+  echo "⚠  post-flow-release-start: versie niet bepaalbaar uit branch '$BRANCH'" >&2
+  exit 0
+fi
+
+source "$(git rev-parse --show-toplevel)/scripts/git-flow-hooks/_helpers.sh"
+
+HUIDIG=$(node -p "require('${ROOT_DIR}/package.json').version" 2>/dev/null)
+
+if [ "$HUIDIG" = "$VERSION" ]; then
+  echo "→ package.json al op versie $VERSION"
+  exit 0
+fi
+
+bump_package_json "$VERSION"

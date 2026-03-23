@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# bump-version.sh — Semver versie ophogen in package.json
+# bump-version.sh — Semver versie handmatig ophogen in package.json
 #
-# Gebruik:
+# Normaal hoef je dit script NIET direct aan te roepen.
+# start-release.sh detecteert de versie automatisch op basis van
+# commit-berichten (Conventional Commits).
+#
+# Gebruik dit script alleen als handmatige override vóór een release:
 #   ./scripts/bump-version.sh patch    → 0.1.0 → 0.1.1
 #   ./scripts/bump-version.sh minor    → 0.1.0 → 0.2.0
 #   ./scripts/bump-version.sh major    → 0.1.0 → 1.0.0
 #   ./scripts/bump-version.sh 1.5.2    → 0.1.0 → 1.5.2  (directe versie)
+#
+# Daarna: ./scripts/start-release.sh  (pakt de versie uit package.json)
 # ─────────────────────────────────────────────────────────────────
 set -euo pipefail
 

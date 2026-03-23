@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────
+# filter-flow-release-start-version
+#
+# Aangeroepen door: git flow release start [versie]
+# Input (stdin):    de versie die de gebruiker meegaf
+# Output (stdout):  de versie die git flow daadwerkelijk gebruikt
+#
+# Als "auto" (of leeg) meegegeven → detecteer versie automatisch.
+# Anders → gebruik de opgegeven versie als-is.
+#
+# Gebruik:
+#   git flow release start auto   → auto-detectie
+#   git flow release start 1.3.0  → directe versie
+# ─────────────────────────────────────────────────────────────────
+
+VERSION=$(cat)  # git flow AVH geeft versie via stdin
+
+if [ -z "$VERSION" ] || [ "$VERSION" = "auto" ]; then
+  # shellcheck source=_helpers.sh
+  source "$(git rev-parse --show-toplevel)/scripts/git-flow-hooks/_helpers.sh"
+
+  BUMP=$(detecteer_bump_type)
+  NIEUWE_VERSIE=$(bereken_versie "$BUMP")
+  HUIDIGE=$(node -p "require('$(git rev-parse --show-toplevel)/package.json').version" 2>/dev/null)
+
+  echo "→ Auto-detectie: $BUMP bump ($HUIDIGE → $NIEUWE_VERSIE)" >&2
+  echo "$NIEUWE_VERSIE"
+else
+  echo "$VERSION"
+fi

@@ -59,6 +59,7 @@ const routes = {
   // Admin
   '/admin/gebruikers':   () => import(`./pages/admin/gebruikers.js?v=${V}`),
   '/admin/verenigingen': () => import(`./pages/admin/verenigingen.js?v=${V}`),
+  '/admin/versie':       () => import(`./pages/admin/versie.js?v=${V}`),
 
   '/profiel': () => import(`./pages/profiel.js?v=${V}`),
 };
