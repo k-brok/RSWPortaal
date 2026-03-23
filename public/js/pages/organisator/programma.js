@@ -2,6 +2,7 @@
 
 import { get, post, put, del, patch } from '../../services/api.js';
 import { escapeHtml as esc } from '../../utils/escape.js';
+import { naarUTC, naarLocalDT } from '../../utils/datum.js';
 
 let editieId  = null;
 let editie    = null;
@@ -395,8 +396,8 @@ function openModal(item) {
   document.getElementById('modal-titel').textContent = item ? 'Item bewerken' : 'Nieuw programma-item';
   document.getElementById('f-naam').value         = item?.naam         ?? '';
   document.getElementById('f-omschrijving').value = item?.omschrijving ?? '';
-  document.getElementById('f-start').value        = item?.start_tijd ? localDT(item.start_tijd) : '';
-  document.getElementById('f-eind').value         = item?.eind_tijd  ? localDT(item.eind_tijd)  : '';
+  document.getElementById('f-start').value        = item?.start_tijd ? naarLocalDT(item.start_tijd) : '';
+  document.getElementById('f-eind').value         = item?.eind_tijd  ? naarLocalDT(item.eind_tijd)  : '';
 
   const modal = document.getElementById('item-modal');
   modal.style.display = 'flex';
@@ -411,8 +412,8 @@ async function submitForm(e) {
     editie_id:    editieId,
     naam:         document.getElementById('f-naam').value,
     omschrijving: document.getElementById('f-omschrijving').value || null,
-    start_tijd:   document.getElementById('f-start').value,
-    eind_tijd:    document.getElementById('f-eind').value || null,
+    start_tijd:   naarUTC(document.getElementById('f-start').value),
+    eind_tijd:    naarUTC(document.getElementById('f-eind').value) || null,
   };
   try {
     if (bewerkId) await put(`/admin/programma/${bewerkId}`, body);
@@ -494,11 +495,6 @@ function formatDag(dt) {
   return new Date(dt).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
 }
 
-function localDT(dt) {
-  const d = new Date(dt);
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
 
 function toonBericht(type, msg) {
   const el = document.getElementById('prog-berichten');

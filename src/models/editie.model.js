@@ -13,6 +13,27 @@ const KOLOMMEN = `
   aangemaakt_op, bijgewerkt_op
 `;
 
+// ── Hulpfunctie: normaliseer DATE-only velden naar "YYYY-MM-DD" strings ──
+// mysql2 geeft DATE-kolommen terug als Date-objecten (UTC midnight). Die worden
+// door JSON.stringify geserialiseerd als "2026-06-14T00:00:00.000Z", wat
+// stringvergelijkingen op de frontend breekt. We zetten ze om naar "YYYY-MM-DD".
+
+const DATE_VELDEN = [
+  'startdatum', 'lsw_datum',
+  'voorinschrijving_start', 'voorinschrijving_sluit',
+  'inschrijving_start', 'inschrijving_sluit',
+];
+
+function normaliseerEditie(rij) {
+  if (!rij) return rij;
+  for (const veld of DATE_VELDEN) {
+    if (rij[veld] instanceof Date) {
+      rij[veld] = rij[veld].toISOString().split('T')[0];
+    }
+  }
+  return rij;
+}
+
 // ── Hulpfunctie: bepaal huidige inschrijffase op basis van datums ──
 
 function bepaalFase(editie) {
@@ -40,21 +61,21 @@ async function alle() {
   const [rows] = await db.execute(
     `SELECT ${KOLOMMEN} FROM edities ORDER BY jaar DESC, naam`
   );
-  return rows;
+  return rows.map(normaliseerEditie);
 }
 
 async function vindOpId(id) {
   const [rows] = await db.execute(
     `SELECT ${KOLOMMEN} FROM edities WHERE id = ?`, [id]
   );
-  return rows[0] ?? null;
+  return normaliseerEditie(rows[0] ?? null);
 }
 
 async function actieveEditie() {
   const [rows] = await db.execute(
     `SELECT ${KOLOMMEN} FROM edities WHERE actief = 1 LIMIT 1`
   );
-  return rows[0] ?? null;
+  return normaliseerEditie(rows[0] ?? null);
 }
 
 // ── Aanmaken ──────────────────────────────────────────────────────
