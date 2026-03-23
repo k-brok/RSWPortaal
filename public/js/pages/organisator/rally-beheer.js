@@ -2,6 +2,7 @@
 
 import { get, post, put, del } from '../../services/api.js';
 import { escapeHtml } from '../../utils/escape.js';
+import { naarUTC, naarLocalDT } from '../../utils/datum.js';
 import { laadPdfMake } from '../../services/pdf.js';
 import { laadJSZip }   from '../../services/zip.js';
 
@@ -367,8 +368,8 @@ function openMomentModal(m) {
   if (m?.categorie_id) catSel.value = m.categorie_id;
 
   document.getElementById('mm-naam').value  = m?.naam || '';
-  document.getElementById('mm-start').value = toDatetimeLocal(m?.start_tijd);
-  document.getElementById('mm-eind').value  = toDatetimeLocal(m?.eind_tijd);
+  document.getElementById('mm-start').value = naarLocalDT(m?.start_tijd);
+  document.getElementById('mm-eind').value  = naarLocalDT(m?.eind_tijd);
 
   const modal = document.getElementById('moment-modal');
   modal.style.display = 'flex';
@@ -380,8 +381,8 @@ function openMomentModal(m) {
       editie_id:    editieId,
       categorie_id: Number(catSel.value),
       naam:         document.getElementById('mm-naam').value.trim() || null,
-      start_tijd:   document.getElementById('mm-start').value,
-      eind_tijd:    document.getElementById('mm-eind').value,
+      start_tijd:   naarUTC(document.getElementById('mm-start').value),
+      eind_tijd:    naarUTC(document.getElementById('mm-eind').value),
       jureer_modus: 'numeriek',
       rally_modus:  true,
       score_niveau: 'criterium',
@@ -786,12 +787,6 @@ function fmtDT(dt) {
   return new Date(dt).toLocaleString('nl-NL', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 }
 
-function toDatetimeLocal(dt) {
-  if (!dt) return '';
-  const d = new Date(dt);
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
 
 function toon(type, msg) {
   const el = document.getElementById('rally-berichten');

@@ -2,6 +2,7 @@
 
 import { get, post, put, del } from '../../services/api.js';
 import { escapeHtml } from '../../utils/escape.js';
+import { naarUTC, naarLocalDT } from '../../utils/datum.js';
 
 let editieId   = null;
 let momenten   = [];
@@ -538,8 +539,8 @@ function openMomentModal(m) {
   ).join('');
 
   document.getElementById('f-modus').value = m?.jureer_modus || 'numeriek';
-  document.getElementById('f-start').value = m ? localDT(m.start_tijd) : '';
-  document.getElementById('f-eind').value  = m ? localDT(m.eind_tijd)  : '';
+  document.getElementById('f-start').value = m ? naarLocalDT(m.start_tijd) : '';
+  document.getElementById('f-eind').value  = m ? naarLocalDT(m.eind_tijd)  : '';
 
   const rallyCheck = document.getElementById('f-rally');
   rallyCheck.checked = !!m?.rally_modus;
@@ -567,8 +568,8 @@ async function submitMomentForm(e) {
     editie_id:        editieId,
     categorie_id:     Number(document.getElementById('f-categorie').value),
     jureer_modus:     document.getElementById('f-modus').value,
-    start_tijd:       document.getElementById('f-start').value,
-    eind_tijd:        document.getElementById('f-eind').value,
+    start_tijd:       naarUTC(document.getElementById('f-start').value),
+    eind_tijd:        naarUTC(document.getElementById('f-eind').value),
     rally_modus:      document.getElementById('f-rally').checked,
     score_niveau:     document.getElementById('f-score-niveau').value,
     aankomst_punten:  Number(document.getElementById('f-aankomst-punten').value) || 0,
@@ -600,11 +601,6 @@ function statusBadge(m) {
 
 function formatDT(dt) {
   return new Date(dt).toLocaleString('nl-NL', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-}
-
-function localDT(dt) {
-  const d = new Date(dt);
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function pad(n) { return String(n).padStart(2, '0'); }
