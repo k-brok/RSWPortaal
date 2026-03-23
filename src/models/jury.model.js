@@ -1,8 +1,9 @@
 // src/models/jury.model.js — Jury momenten, tokens en scores
 
-const db        = require('../config/db');
-const crypto    = require('crypto');
-const QRCode    = require('qrcode');
+const db              = require('../config/db');
+const crypto          = require('crypto');
+const QRCode          = require('qrcode');
+const { naarMysqlDT } = require('../utils/datum');
 const editieModel = require('./editie.model');
 const { berekenBmStatus } = require('./patrouille.model');
 
@@ -207,7 +208,7 @@ async function aanmaken({ editie_id, categorie_id, naam, start_tijd, eind_tijd, 
        (editie_id, categorie_id, naam, start_tijd, eind_tijd, jureer_modus,
         rally_modus, score_niveau, aankomst_punten)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [editie_id, categorie_id, naam || null, start_tijd, eind_tijd, jureer_modus || 'numeriek',
+    [editie_id, categorie_id, naam || null, naarMysqlDT(start_tijd), naarMysqlDT(eind_tijd), jureer_modus || 'numeriek',
      rally_modus ? 1 : 0, score_niveau || 'criterium', aankomst_punten ?? 0]
   );
   return vindMoment(r.insertId);
@@ -220,7 +221,7 @@ async function bijwerken(momentId, { categorie_id, naam, start_tijd, eind_tijd, 
      SET categorie_id=?, naam=?, start_tijd=?, eind_tijd=?, jureer_modus=?,
          rally_modus=?, score_niveau=?, aankomst_punten=?
      WHERE id=?`,
-    [categorie_id, naam || null, start_tijd, eind_tijd, jureer_modus || 'numeriek',
+    [categorie_id, naam || null, naarMysqlDT(start_tijd), naarMysqlDT(eind_tijd), jureer_modus || 'numeriek',
      rally_modus ? 1 : 0, score_niveau || 'criterium', aankomst_punten ?? 0,
      momentId]
   );
