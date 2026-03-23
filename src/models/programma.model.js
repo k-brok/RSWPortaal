@@ -1,6 +1,7 @@
 // src/models/programma.model.js — Programma-items en programma-overzicht
 
-const db = require('../config/db');
+const db              = require('../config/db');
+const { naarMysqlDT } = require('../utils/datum');
 
 async function alleItems(editieId) {
   const [rows] = await db.execute(
@@ -18,7 +19,7 @@ async function vindItem(id) {
 async function aanmaken({ editie_id, naam, omschrijving, start_tijd, eind_tijd }) {
   const [r] = await db.execute(
     'INSERT INTO programma_items (editie_id, naam, omschrijving, start_tijd, eind_tijd) VALUES (?, ?, ?, ?, ?)',
-    [editie_id, naam, omschrijving || null, start_tijd, eind_tijd || null]
+    [editie_id, naam, omschrijving || null, naarMysqlDT(start_tijd), naarMysqlDT(eind_tijd)]
   );
   return vindItem(r.insertId);
 }
@@ -26,7 +27,7 @@ async function aanmaken({ editie_id, naam, omschrijving, start_tijd, eind_tijd }
 async function bijwerken(id, { naam, omschrijving, start_tijd, eind_tijd }) {
   await db.execute(
     'UPDATE programma_items SET naam=?, omschrijving=?, start_tijd=?, eind_tijd=? WHERE id=?',
-    [naam, omschrijving || null, start_tijd, eind_tijd || null, id]
+    [naam, omschrijving || null, naarMysqlDT(start_tijd), naarMysqlDT(eind_tijd), id]
   );
   return vindItem(id);
 }
@@ -127,7 +128,7 @@ async function kopieerVanEditie(bronId, doelId) {
         : null;
       await conn.execute(
         'INSERT INTO programma_items (editie_id, naam, omschrijving, start_tijd, eind_tijd) VALUES (?, ?, ?, ?, ?)',
-        [doelId, item.naam, item.omschrijving, nieuweStart, nieuweEind]
+        [doelId, item.naam, item.omschrijving, naarMysqlDT(nieuweStart), naarMysqlDT(nieuweEind)]
       );
     }
     await conn.commit();
