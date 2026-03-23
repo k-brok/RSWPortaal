@@ -210,7 +210,10 @@ function buildRolNav() {
           <span class="nav-item-icon">&#128197;</span>
           <span class="nav-item-label">Edities</span>
         </a>
-
+        <a href="#/admin/versie" class="nav-item" data-route="/admin/versie">
+          <span class="nav-item-icon">&#128260;</span>
+          <span class="nav-item-label">Versie &amp; Updates</span>
+        </a>
       </div>
     `);
   }

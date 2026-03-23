@@ -23,6 +23,8 @@ require('./socket/jury.socket')(io);
 
 // Unieke versie per server-start — omzeilt proxy-caches voor JS/CSS
 const BUILD_VERSION = Date.now().toString();
+// Semantische versie uit package.json — zichtbaar in de UI
+const APP_VERSION = require('../package.json').version;
 
 // ── Middleware ────────────────────────────────────────────────────
 app.use(express.json({ limit: '25mb' }));
@@ -47,7 +49,9 @@ app.get('/js/app.js', (_req, res) => {
 
 app.get('/js/config.js', (_req, res) => {
   const filePath = path.join(__dirname, '..', 'public', 'js', 'config.js');
-  const inhoud   = fs.readFileSync(filePath, 'utf8').replace('__RSW_BASEPATH__', BASE_PATH);
+  const inhoud   = fs.readFileSync(filePath, 'utf8')
+    .replace('__RSW_BASEPATH__',    BASE_PATH)
+    .replace('__RSW_APP_VERSION__', APP_VERSION);
   res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
   res.setHeader('Cache-Control', 'no-store');
   res.send(inhoud);
@@ -99,6 +103,7 @@ app.use('/api/admin/catering',      require('./routes/admin.catering.routes'));
 app.use('/api/publiek',             require('./routes/publiek.routes'));
 app.use('/api/rally',               require('./routes/rally.routes'));
 app.use('/api/admin/rally',         require('./routes/admin.rally.routes'));
+app.use('/api/admin/versie',        require('./routes/admin.versie.routes'));
 
 // ── SPA fallback ──────────────────────────────────────────────────
 app.get('*', (req, res) => {
