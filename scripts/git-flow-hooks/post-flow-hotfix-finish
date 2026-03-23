@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────
+# post-flow-hotfix-finish
+#
+# Aangeroepen door: git flow hotfix finish
+# Na:               merge naar master + tag + merge terug naar develop
+#
+# Maakt automatisch een GitHub Release aan.
+# ─────────────────────────────────────────────────────────────────
+
+source "$(git rev-parse --show-toplevel)/scripts/git-flow-hooks/_helpers.sh"
+
+VERSION=$(node -p "require('${ROOT_DIR}/package.json').version" 2>/dev/null)
+TAG="v${VERSION}"
+
+echo ""
+echo "→ GitHub Release aanmaken voor hotfix $TAG..."
+NOTES=$(genereer_release_notes)
+maak_github_release "$TAG" "$NOTES"

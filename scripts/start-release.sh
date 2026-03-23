@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# start-release.sh — Git Flow release branch aanmaken
+# start-release.sh — Handmatig release starten (noodoplossing)
+#
+# Normaal gebruik je: git flow release start auto
+# (vereist dat setup-dev.sh eenmalig is uitgevoerd)
+#
+# Dit script is een fallback als de git flow hooks niet beschikbaar zijn.
 #
 # Gebruik:
 #   ./scripts/start-release.sh            → auto-detectie op basis van commits

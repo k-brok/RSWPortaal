@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────
+# post-flow-hotfix-start
+#
+# Aangeroepen door: git flow hotfix start <versie>
+# Na:               aanmaken van de hotfix branch
+#
+# Verhoogt package.json naar de hotfix versie en commit dit.
+# Als geen versie opgegeven: patch bump automatisch.
+# ─────────────────────────────────────────────────────────────────
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+VERSION=$(echo "$BRANCH" | sed 's|hotfix/v\?||')
+
+source "$(git rev-parse --show-toplevel)/scripts/git-flow-hooks/_helpers.sh"
+
+if [ -z "$VERSION" ]; then
+  # Fallback: patch bump bepalen
+  VERSION=$(bereken_versie patch)
+  echo "→ Versie bepaald als patch bump: $VERSION" >&2
+fi
+
+HUIDIG=$(node -p "require('${ROOT_DIR}/package.json').version" 2>/dev/null)
+
+if [ "$HUIDIG" = "$VERSION" ]; then
+  echo "→ package.json al op versie $VERSION"
+  exit 0
+fi
+
+bump_package_json "$VERSION"

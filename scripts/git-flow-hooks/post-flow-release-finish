@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────
+# post-flow-release-finish
+#
+# Aangeroepen door: git flow release finish
+# Na:               merge naar master + tag + merge terug naar develop
+#
+# Maakt automatisch een GitHub Release aan met gegenereerde release notes.
+# ─────────────────────────────────────────────────────────────────
+
+source "$(git rev-parse --show-toplevel)/scripts/git-flow-hooks/_helpers.sh"
+
+# Versie uit package.json (al bijgewerkt door post-flow-release-start)
+VERSION=$(node -p "require('${ROOT_DIR}/package.json').version" 2>/dev/null)
+TAG="v${VERSION}"
+
+echo ""
+echo "→ GitHub Release aanmaken voor $TAG..."
+NOTES=$(genereer_release_notes)
+maak_github_release "$TAG" "$NOTES"
