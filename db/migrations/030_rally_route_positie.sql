@@ -6,15 +6,15 @@
 -- De FK fk_rrs_route gebruikt de UNIQUE KEY als index voor route_id;
 -- eerst een aparte index aanmaken zodat de FK iets heeft om op te leunen.
 ALTER TABLE rally_route_stations
-  ADD INDEX IF NOT EXISTS idx_rrs_route (route_id);
+  ADD INDEX idx_rrs_route (route_id);
 
 ALTER TABLE rally_route_stations
-  DROP KEY IF EXISTS uq_route_station;
+  DROP KEY uq_route_station;
 
 -- Startpost-markering per route-positie (ipv per station)
 ALTER TABLE rally_route_stations
-  ADD COLUMN IF NOT EXISTS is_start TINYINT(1) NOT NULL DEFAULT 0;
+  ADD COLUMN is_start TINYINT(1) NOT NULL DEFAULT 0;
 
 -- is_start en is_circulair zijn verplaatst — opruimen
-ALTER TABLE rally_stations DROP COLUMN IF EXISTS is_start;
-ALTER TABLE rally_routes   DROP COLUMN IF EXISTS is_circulair;
+ALTER TABLE rally_stations DROP COLUMN is_start;
+ALTER TABLE rally_routes   DROP COLUMN is_circulair;

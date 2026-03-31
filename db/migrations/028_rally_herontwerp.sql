@@ -12,7 +12,7 @@
 -- 1. Rally-type op categorieniveau
 --    NULL = nog niet ingesteld, wordt gezet door organisator
 ALTER TABLE editie_categorieen
-  ADD COLUMN IF NOT EXISTS rally_type ENUM('tocht','spelmiddag') NULL DEFAULT NULL
+  ADD COLUMN rally_type ENUM('tocht','spelmiddag') NULL DEFAULT NULL
   AFTER wegingspercentage;
 
 -- 2. Routes per jurymomenten (alleen tocht)
@@ -67,5 +67,5 @@ CREATE TABLE IF NOT EXISTS rally_aankomst_punten (
 
 -- 6. aankomst_positie opslaan op het bezoek zodat tracking de volgorde toont
 ALTER TABLE patrouille_bezoeken
-  ADD COLUMN IF NOT EXISTS aankomst_positie INT NULL DEFAULT NULL
+  ADD COLUMN aankomst_positie INT NULL DEFAULT NULL
   AFTER status;

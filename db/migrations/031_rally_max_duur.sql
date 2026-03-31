@@ -3,4 +3,4 @@
 -- Timer start bij de eerste scan (startpost). Na afloop worden scans geweigerd.
 
 ALTER TABLE jurymomenten
-  ADD COLUMN IF NOT EXISTS max_duur_minuten INT NULL DEFAULT NULL;
+  ADD COLUMN max_duur_minuten INT NULL DEFAULT NULL;
