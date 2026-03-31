@@ -8,8 +8,6 @@ const APP_URL = () => process.env.APP_URL || 'http://localhost:3000';
 
 // ── Patrouille QR tokens ────────────────────────────────────────────
 
-// Genereert tokens voor alle patrouilles die gekoppeld zijn aan de editie.
-// INSERT IGNORE = bestaande tokens blijven ongewijzigd.
 async function genereerPatrouilleTokens(editieId) {
   const [patrouilles] = await db.execute(
     `SELECT id FROM patrouilles WHERE editie_id = ?`, [editieId]
@@ -49,7 +47,6 @@ async function alleTokensVoorEditie(editieId) {
 
   if (!rows.length) return [];
 
-  // Bouw nummer-map uit plattegrond cellen
   const cellenRaw = rows[0]?.cellen;
   const cellen = cellenRaw
     ? (typeof cellenRaw === 'string' ? JSON.parse(cellenRaw) : cellenRaw)
@@ -75,11 +72,10 @@ async function alleTokensVoorEditie(editieId) {
   }));
 }
 
-// Valideert patrouille token en geeft patrouille + editie info terug
 async function vindPatrouilleToken(token) {
   const [rows] = await db.execute(`
     SELECT pqt.patrouille_id, pqt.editie_id,
-           p.naam AS patrouille_naam, p.editie_id AS p_editie_id
+           p.naam AS patrouille_naam
     FROM patrouille_qr_tokens pqt
     JOIN patrouilles p ON p.id = pqt.patrouille_id
     WHERE pqt.token = ?
@@ -88,7 +84,6 @@ async function vindPatrouilleToken(token) {
   if (!rows[0]) return null;
   const r = rows[0];
 
-  // Nummer ophalen via plattegrond
   const [plRows] = await db.execute(
     `SELECT cellen FROM plattegronden WHERE editie_id = ?`, [r.editie_id]
   );
@@ -116,7 +111,7 @@ async function vindPatrouilleToken(token) {
 
 async function alleStations(momentId) {
   const [stations] = await db.execute(`
-    SELECT rs.id, rs.naam, rs.token, rs.volgorde,
+    SELECT rs.id, rs.naam, rs.token, rs.volgorde, rs.punten,
            COUNT(rsc.id) AS criteria_count
     FROM rally_stations rs
     LEFT JOIN rally_station_criteria rsc ON rsc.station_id = rs.id
@@ -162,10 +157,10 @@ async function stationAanmaken({ jurymoment_id, naam, volgorde }) {
   return { id: r.insertId, token };
 }
 
-async function stationBijwerken(id, { naam, volgorde }) {
+async function stationBijwerken(id, { naam, volgorde, punten }) {
   await db.execute(
-    `UPDATE rally_stations SET naam=?, volgorde=? WHERE id=?`,
-    [naam.trim(), volgorde ?? 0, id]
+    `UPDATE rally_stations SET naam=?, volgorde=?, punten=? WHERE id=?`,
+    [naam.trim(), volgorde ?? 0, punten ?? null, id]
   );
 }
 
@@ -181,7 +176,6 @@ async function stationVerwijderen(id) {
   return r.affectedRows > 0;
 }
 
-// Stel de criteria in voor een station (vervangt bestaande criteria volledig)
 async function criteriaInstellen(stationId, criteria) {
   const conn = await db.getConnection();
   try {
@@ -190,7 +184,8 @@ async function criteriaInstellen(stationId, criteria) {
     for (let i = 0; i < criteria.length; i++) {
       const c = criteria[i];
       await conn.execute(
-        `INSERT INTO rally_station_criteria (station_id, criterium_id, aankomst_punten, is_aankomst, volgorde)
+        `INSERT INTO rally_station_criteria
+           (station_id, criterium_id, aankomst_punten, is_aankomst, volgorde)
          VALUES (?,?,?,?,?)`,
         [stationId, c.criterium_id, c.aankomst_punten ?? 0, c.is_aankomst ? 1 : 0, c.volgorde ?? i]
       );
@@ -204,13 +199,15 @@ async function criteriaInstellen(stationId, criteria) {
   }
 }
 
-// Valideert station token en geeft alle benodigde info voor het scoreformulier terug
+// Valideert station token — incl. rally_type van de categorie
 async function vindStationToken(token) {
   const [rows] = await db.execute(`
     SELECT rs.id AS station_id, rs.naam AS station_naam, rs.jurymoment_id,
+           rs.punten AS station_punten,
            jm.categorie_id, jm.editie_id, jm.rally_modus,
            jm.start_tijd, jm.eind_tijd, jm.handmatig_open, jm.naam AS moment_naam,
-           ec.naam AS categorie_naam
+           jm.aankomst_punten_modus, jm.max_duur_minuten,
+           ec.naam AS categorie_naam, ec.rally_type
     FROM rally_stations rs
     JOIN jurymomenten jm ON jm.id = rs.jurymoment_id
     JOIN editie_categorieen ec ON ec.id = jm.categorie_id
@@ -232,31 +229,274 @@ async function vindStationToken(token) {
   `, [r.station_id]);
 
   return {
-    station:        { id: r.station_id, naam: r.station_naam },
-    moment: {
-      id:            r.jurymoment_id,
-      editie_id:     r.editie_id,
-      categorie_id:  r.categorie_id,
-      start_tijd:    r.start_tijd,
-      eind_tijd:     r.eind_tijd,
-      handmatig_open: !!r.handmatig_open,
-      naam:          r.moment_naam,
-      rally_modus:   !!r.rally_modus,
+    station: {
+      id:     r.station_id,
+      naam:   r.station_naam,
+      punten: r.station_punten != null ? Number(r.station_punten) : null,
     },
+    moment: {
+      id:                    r.jurymoment_id,
+      editie_id:             r.editie_id,
+      categorie_id:          r.categorie_id,
+      start_tijd:            r.start_tijd,
+      eind_tijd:             r.eind_tijd,
+      handmatig_open:        !!r.handmatig_open,
+      naam:                  r.moment_naam,
+      rally_modus:           !!r.rally_modus,
+      aankomst_punten_modus: r.aankomst_punten_modus || 'geen',
+      max_duur_minuten:      r.max_duur_minuten != null ? Number(r.max_duur_minuten) : null,
+    },
+    rally_type:     r.rally_type ?? null,
     categorie_naam: r.categorie_naam,
     criteria,
   };
 }
 
+// ── Routes (tocht) ─────────────────────────────────────────────────
+
+async function alleRoutes(jurymomentId) {
+  const [routes] = await db.execute(
+    `SELECT id, naam FROM rally_routes WHERE jurymoment_id = ? ORDER BY naam`,
+    [jurymomentId]
+  );
+  if (!routes.length) return [];
+
+  const ids = routes.map(r => r.id);
+  const ph  = ids.map(() => '?').join(',');
+  const [rrs] = await db.execute(`
+    SELECT rrs.route_id, rrs.station_id, rrs.volgorde, rrs.is_start, rs.naam AS station_naam
+    FROM rally_route_stations rrs
+    JOIN rally_stations rs ON rs.id = rrs.station_id
+    WHERE rrs.route_id IN (${ph})
+    ORDER BY rrs.route_id, rrs.volgorde
+  `, ids);
+
+  // Aantal patrouilles per route
+  const [toewijzingen] = await db.execute(
+    `SELECT route_id, COUNT(*) AS n FROM patrouille_routes WHERE route_id IN (${ph}) GROUP BY route_id`,
+    ids
+  );
+  const patCount = Object.fromEntries(toewijzingen.map(t => [t.route_id, Number(t.n)]));
+
+  const stByRoute = {};
+  for (const rr of rrs) {
+    if (!stByRoute[rr.route_id]) stByRoute[rr.route_id] = [];
+    stByRoute[rr.route_id].push({ station_id: rr.station_id, naam: rr.station_naam, volgorde: rr.volgorde, is_start: !!rr.is_start });
+  }
+
+  return routes.map(r => ({
+    ...r,
+    stations:         stByRoute[r.id] || [],
+    patrouille_count: patCount[r.id]  || 0,
+  }));
+}
+
+async function routeAanmaken(jurymomentId, naam) {
+  const [r] = await db.execute(
+    `INSERT INTO rally_routes (jurymoment_id, naam) VALUES (?,?)`,
+    [jurymomentId, naam.trim()]
+  );
+  return { id: r.insertId, naam: naam.trim(), stations: [], patrouille_count: 0 };
+}
+
+async function routeBijwerken(routeId, naam) {
+  await db.execute(`UPDATE rally_routes SET naam=? WHERE id=?`, [naam.trim(), routeId]);
+}
+
+async function routeVerwijderen(routeId) {
+  const [[{ n }]] = await db.execute(
+    `SELECT COUNT(*) AS n FROM patrouille_routes WHERE route_id=?`, [routeId]
+  );
+  if (n > 0) throw Object.assign(
+    new Error('Route kan niet worden verwijderd: er zijn patrouilles aan gekoppeld.'),
+    { status: 409 }
+  );
+  await db.execute(`DELETE FROM rally_routes WHERE id=?`, [routeId]);
+}
+
+// Stel de volgorde van stations in voor een route (vervangt bestaande volgorde)
+// stations = [{station_id, is_start}]
+async function routeStationsInstellen(routeId, stations) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute(`DELETE FROM rally_route_stations WHERE route_id=?`, [routeId]);
+    for (let i = 0; i < stations.length; i++) {
+      const s = stations[i];
+      await conn.execute(
+        `INSERT INTO rally_route_stations (route_id, station_id, volgorde, is_start) VALUES (?,?,?,?)`,
+        [routeId, s.station_id, i + 1, s.is_start ? 1 : 0]
+      );
+    }
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+// ── Patrouille-route toewijzing ────────────────────────────────────
+
+// Wijs een patrouille toe aan een route (verwijdert eventuele vorige toewijzing voor dit moment)
+async function patrouilleToewijzenRoute(patrouilleId, routeId) {
+  // Zoek het jurymoment van deze route om oude toewijzingen te kunnen verwijderen
+  const [[route]] = await db.execute(
+    `SELECT jurymoment_id FROM rally_routes WHERE id=?`, [routeId]
+  );
+  if (!route) throw Object.assign(new Error('Route niet gevonden'), { status: 404 });
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    // Verwijder eventuele bestaande toewijzing voor hetzelfde moment
+    await conn.execute(`
+      DELETE pr FROM patrouille_routes pr
+      JOIN rally_routes rr ON rr.id = pr.route_id
+      WHERE pr.patrouille_id = ? AND rr.jurymoment_id = ?
+    `, [patrouilleId, route.jurymoment_id]);
+    // Voeg nieuwe toewijzing toe
+    await conn.execute(
+      `INSERT INTO patrouille_routes (patrouille_id, route_id) VALUES (?,?)`,
+      [patrouilleId, routeId]
+    );
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+async function patrouilleRouteVerwijderen(patrouilleId, jurymomentId) {
+  await db.execute(`
+    DELETE pr FROM patrouille_routes pr
+    JOIN rally_routes rr ON rr.id = pr.route_id
+    WHERE pr.patrouille_id = ? AND rr.jurymoment_id = ?
+  `, [patrouilleId, jurymomentId]);
+}
+
+// Geeft de route + geordende stations terug voor een patrouille in een moment
+async function vindPatrouilleRoute(patrouilleId, jurymomentId) {
+  const [rows] = await db.execute(`
+    SELECT rr.id AS route_id, rr.naam AS route_naam,
+           rrs.station_id, rrs.volgorde, rrs.is_start, rs.naam AS station_naam,
+           rs.punten AS station_punten
+    FROM patrouille_routes pr
+    JOIN rally_routes rr ON rr.id = pr.route_id
+    LEFT JOIN rally_route_stations rrs ON rrs.route_id = rr.id
+    LEFT JOIN rally_stations rs ON rs.id = rrs.station_id
+    WHERE pr.patrouille_id = ? AND rr.jurymoment_id = ?
+    ORDER BY rrs.volgorde
+  `, [patrouilleId, jurymomentId]);
+
+  if (!rows.length || !rows[0].route_id) return null;
+
+  return {
+    route_id:   rows[0].route_id,
+    route_naam: rows[0].route_naam,
+    stations:   rows
+      .filter(r => r.station_id)
+      .map(r => ({
+        station_id:    r.station_id,
+        naam:          r.station_naam,
+        volgorde:      r.volgorde,
+        is_start:      !!r.is_start,
+        station_punten: r.station_punten != null ? Number(r.station_punten) : null,
+      })),
+  };
+}
+
+// Alle patrouille-toewijzingen voor een moment
+async function allePatrouilleRoutes(jurymomentId) {
+  const [rows] = await db.execute(`
+    SELECT pr.patrouille_id, pr.route_id, rr.naam AS route_naam
+    FROM patrouille_routes pr
+    JOIN rally_routes rr ON rr.id = pr.route_id
+    WHERE rr.jurymoment_id = ?
+  `, [jurymomentId]);
+  return rows;
+}
+
+// ── Aankomstpunten per positie (tocht) ────────────────────────────
+
+async function aankomstPuntenVoorMoment(jurymomentId) {
+  const [rows] = await db.execute(
+    `SELECT positie, punten FROM rally_aankomst_punten
+     WHERE jurymoment_id = ? ORDER BY positie`,
+    [jurymomentId]
+  );
+  return rows; // [{positie, punten}, ...]
+}
+
+async function aankomstPuntenInstellen(jurymomentId, puntenLijst) {
+  // puntenLijst = [{positie: 1, punten: 10}, {positie: 2, punten: 7}, ...]
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute(
+      `DELETE FROM rally_aankomst_punten WHERE jurymoment_id=?`, [jurymomentId]
+    );
+    for (const p of puntenLijst) {
+      if (p.punten > 0) {
+        await conn.execute(
+          `INSERT INTO rally_aankomst_punten (jurymoment_id, positie, punten) VALUES (?,?,?)`,
+          [jurymomentId, p.positie, p.punten]
+        );
+      }
+    }
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+// ── Voortgang punten per bezoek-nr ────────────────────────────────
+
+async function voortgangPuntenVoorMoment(jurymomentId) {
+  const [rows] = await db.execute(
+    `SELECT bezoek_nr, punten FROM rally_voortgang_punten
+     WHERE jurymoment_id = ? ORDER BY bezoek_nr`,
+    [jurymomentId]
+  );
+  return rows;
+}
+
+async function voortgangPuntenInstellen(jurymomentId, puntenLijst) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute(`DELETE FROM rally_voortgang_punten WHERE jurymoment_id=?`, [jurymomentId]);
+    for (const p of puntenLijst) {
+      if (p.punten > 0) {
+        await conn.execute(
+          `INSERT INTO rally_voortgang_punten (jurymoment_id, bezoek_nr, punten) VALUES (?,?,?)`,
+          [jurymomentId, p.bezoek_nr, p.punten]
+        );
+      }
+    }
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
 // ── Bezoeken ───────────────────────────────────────────────────────
 
-// Registreert aankomst van patrouille bij rally station.
-// Bij dubbele scan: geef bestaand bezoek terug.
-async function registreerBezoek(jurymomentId, stationId, patrouilleId) {
+async function registreerBezoek(jurymomentId, stationId, patrouilleId, aankomstPositie = null) {
   await db.execute(
-    `INSERT IGNORE INTO patrouille_bezoeken (jurymoment_id, station_id, patrouille_id)
-     VALUES (?, ?, ?)`,
-    [jurymomentId, stationId, patrouilleId]
+    `INSERT IGNORE INTO patrouille_bezoeken
+       (jurymoment_id, station_id, patrouille_id, aankomst_positie)
+     VALUES (?, ?, ?, ?)`,
+    [jurymomentId, stationId, patrouilleId, aankomstPositie]
   );
   const [rows] = await db.execute(
     `SELECT * FROM patrouille_bezoeken WHERE station_id=? AND patrouille_id=?`,
@@ -265,6 +505,51 @@ async function registreerBezoek(jurymomentId, stationId, patrouilleId) {
   return rows[0] ?? null;
 }
 
+// Startpost terugkomst registreren (rondje-route): UPDATE bestaand bezoek
+async function registreerTerugkomst(jurymomentId, stationId, patrouilleId, aankomstPositie = null) {
+  await db.execute(
+    `UPDATE patrouille_bezoeken
+     SET terugkomst_tijd = NOW(), aankomst_positie = COALESCE(aankomst_positie, ?)
+     WHERE station_id=? AND patrouille_id=? AND terugkomst_tijd IS NULL`,
+    [aankomstPositie, stationId, patrouilleId]
+  );
+  const [rows] = await db.execute(
+    `SELECT * FROM patrouille_bezoeken WHERE station_id=? AND patrouille_id=?`,
+    [stationId, patrouilleId]
+  );
+  return rows[0] ?? null;
+}
+
+// Tel het aantal patrouilles dat al is aangekomen bij dit station in dit moment
+// (exclusief de huidige patrouille — use BEFORE registreerBezoek)
+async function telAankomstenBijStation(jurymomentId, stationId) {
+  const [[{ n }]] = await db.execute(
+    `SELECT COUNT(*) AS n FROM patrouille_bezoeken
+     WHERE jurymoment_id=? AND station_id=?`,
+    [jurymomentId, stationId]
+  );
+  return Number(n);
+}
+
+// Tel aantal terugkomsten bij de startpost (voor per_positie modus op circulaire routes)
+async function telTerugkomstenBijStation(jurymomentId, stationId) {
+  const [[{ n }]] = await db.execute(
+    `SELECT COUNT(*) AS n FROM patrouille_bezoeken
+     WHERE jurymoment_id=? AND station_id=? AND terugkomst_tijd IS NOT NULL`,
+    [jurymomentId, stationId]
+  );
+  return Number(n);
+}
+
+// Tel het aantal bezoeken voor een patrouille in dit moment (voor per_bezoek modus, spelmiddag)
+async function telBezoeken(jurymomentId, patrouilleId) {
+  const [[{ n }]] = await db.execute(`
+    SELECT COUNT(*) AS n
+    FROM patrouille_bezoeken
+    WHERE jurymoment_id=? AND patrouille_id=?
+  `, [jurymomentId, patrouilleId]);
+  return Number(n);
+}
 
 async function zetBezoekBezig(stationId, patrouilleId) {
   await db.execute(
@@ -274,7 +559,6 @@ async function zetBezoekBezig(stationId, patrouilleId) {
   );
 }
 
-// Zoek subkamp_id van een patrouille via de plattegrond-cellen
 async function vindSubkampPatrouille(patrouilleId, editieId) {
   const [rows] = await db.execute(
     `SELECT cellen FROM plattegronden WHERE editie_id = ?`, [editieId]
@@ -288,13 +572,24 @@ async function vindSubkampPatrouille(patrouilleId, editieId) {
   return null;
 }
 
-// Overzicht per patrouille: welke stations al bezocht
+// ── Tracking overzicht ─────────────────────────────────────────────
+
 async function trackingOverzicht(editieId) {
+  // Rally momenten met type info
+  const [momenten] = await db.execute(`
+    SELECT jm.id AS moment_id, jm.naam AS moment_naam, jm.start_tijd,
+           ec.naam AS categorie_naam, ec.rally_type
+    FROM jurymomenten jm
+    JOIN editie_categorieen ec ON ec.id = jm.categorie_id
+    WHERE jm.editie_id = ? AND jm.rally_modus = 1
+    ORDER BY jm.start_tijd
+  `, [editieId]);
+
   // Alle rally stations voor deze editie
   const [stations] = await db.execute(`
     SELECT rs.id AS station_id, rs.naam AS station_naam, rs.volgorde,
            jm.id AS moment_id, jm.start_tijd,
-           ec.naam AS categorie_naam
+           ec.naam AS categorie_naam, ec.rally_type
     FROM rally_stations rs
     JOIN jurymomenten jm ON jm.id = rs.jurymoment_id
     JOIN editie_categorieen ec ON ec.id = jm.categorie_id
@@ -302,7 +597,7 @@ async function trackingOverzicht(editieId) {
     ORDER BY jm.start_tijd, rs.volgorde, rs.naam
   `, [editieId]);
 
-  // Alle patrouilles met nummers via plattegrond
+  // Patrouilles met nummers via plattegrond
   const [plRows] = await db.execute(
     `SELECT cellen FROM plattegronden WHERE editie_id = ?`, [editieId]
   );
@@ -331,26 +626,70 @@ async function trackingOverzicht(editieId) {
       .sort((a, b) => (a.nummer ?? 9999) - (b.nummer ?? 9999));
   }
 
-  // Bezoeken via station_id
+  // Bezoeken
   const stationIds = stations.map(s => s.station_id);
   let bezoeken = [];
   if (stationIds.length) {
     const ph = stationIds.map(() => '?').join(',');
     const [bRows] = await db.execute(
-      `SELECT station_id, patrouille_id, status, aankomst_tijd, vertrek_tijd
+      `SELECT station_id, patrouille_id, status, aankomst_positie,
+              aankomst_tijd, terugkomst_tijd, vertrek_tijd
        FROM patrouille_bezoeken WHERE station_id IN (${ph})`,
       stationIds
     );
     bezoeken = bRows;
   }
 
-  // Lookup: `${stationId}_${patrouilleId}` → bezoek
   const bezoekLookup = {};
   for (const b of bezoeken) {
     bezoekLookup[`${b.station_id}_${b.patrouille_id}`] = b;
   }
 
-  return { stations, patrouilles, bezoekLookup };
+  // Routes per patrouille per moment (voor tocht-type)
+  const momentIds = momenten.map(m => m.moment_id);
+  let routeToewijzingen = [];
+  if (momentIds.length) {
+    const ph = momentIds.map(() => '?').join(',');
+    const [rtRows] = await db.execute(`
+      SELECT pr.patrouille_id, pr.route_id, rr.naam AS route_naam, rr.jurymoment_id
+      FROM patrouille_routes pr
+      JOIN rally_routes rr ON rr.id = pr.route_id
+      WHERE rr.jurymoment_id IN (${ph})
+    `, momentIds);
+    routeToewijzingen = rtRows;
+  }
+
+  // Lookup: `${momentId}_${patrouilleId}` → route
+  const routeLookup = {};
+  for (const rt of routeToewijzingen) {
+    routeLookup[`${rt.jurymoment_id}_${rt.patrouille_id}`] = rt;
+  }
+
+  // Route-station volgorde per moment (voor tocht tracking)
+  const routeIds = [...new Set(routeToewijzingen.map(r => r.route_id))];
+  let routeStations = [];
+  if (routeIds.length) {
+    const ph = routeIds.map(() => '?').join(',');
+    const [rsRows] = await db.execute(`
+      SELECT route_id, station_id, volgorde, is_start FROM rally_route_stations
+      WHERE route_id IN (${ph}) ORDER BY route_id, volgorde
+    `, routeIds);
+    routeStations = rsRows;
+  }
+  const routeStationsLookup = {};
+  for (const rs of routeStations) {
+    if (!routeStationsLookup[rs.route_id]) routeStationsLookup[rs.route_id] = [];
+    routeStationsLookup[rs.route_id].push(rs);
+  }
+
+  return {
+    momenten,
+    stations,
+    patrouilles,
+    bezoekLookup,
+    routeLookup,
+    routeStationsLookup,
+  };
 }
 
 module.exports = {
@@ -365,8 +704,29 @@ module.exports = {
   stationVerwijderen,
   criteriaInstellen,
   vindStationToken,
+  // Routes (tocht)
+  alleRoutes,
+  routeAanmaken,
+  routeBijwerken,
+  routeVerwijderen,
+  routeStationsInstellen,
+  // Patrouille-route toewijzing
+  patrouilleToewijzenRoute,
+  patrouilleRouteVerwijderen,
+  vindPatrouilleRoute,
+  allePatrouilleRoutes,
+  // Aankomstpunten per positie
+  aankomstPuntenVoorMoment,
+  aankomstPuntenInstellen,
+  // Voortgang punten per bezoek-nr
+  voortgangPuntenVoorMoment,
+  voortgangPuntenInstellen,
   // Bezoeken
   registreerBezoek,
+  registreerTerugkomst,
+  telAankomstenBijStation,
+  telTerugkomstenBijStation,
+  telBezoeken,
   zetBezoekBezig,
   vindSubkampPatrouille,
   // Tracking

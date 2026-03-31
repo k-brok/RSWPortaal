@@ -47,6 +47,14 @@ export async function render() {
               <label class="form-label">Omschrijving</label>
               <textarea id="cat-f-omschrijving" class="form-input" rows="3"></textarea>
             </div>
+            <div class="form-group">
+              <label class="form-label">Rally type</label>
+              <select id="cat-f-rally-type" class="form-input">
+                <option value="">— geen rally —</option>
+                <option value="tocht">Tocht (vaste route per patrouille, aankomstvolgorde)</option>
+                <option value="spelmiddag">Spelmiddag (vrij scannen, spellen tellen)</option>
+              </select>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-ghost" id="cat-modal-annuleer">Annuleren</button>
@@ -263,6 +271,8 @@ function renderCatKaart(cat) {
         <span style="font-size:1rem;">${open ? '&#9660;' : '&#9654;'}</span>
         <strong style="flex:1;">${escapeHtml(cat.naam)}</strong>
         ${gestart ? '<span class="badge badge-warning" title="Jurering gestart — verwijderen geblokkeerd">JURERING GESTART</span>' : ''}
+        ${flat.rally_type === 'tocht' ? '<span class="badge badge-info" style="font-size:.72rem">Tocht</span>' : ''}
+        ${flat.rally_type === 'spelmiddag' ? '<span class="badge badge-warning" style="font-size:.72rem">Spelmiddag</span>' : ''}
         <span class="text-muted" style="font-size:0.82rem;">${flat.subcategorie_count ?? 0} subcategorieën &middot; ${flat.criterium_count ?? 0} criteria</span>
         <div style="display:flex;gap:6px;" onclick="event.stopPropagation()">
           <button class="btn btn-sm btn-outline" data-actie="bewerk-cat">Bewerk</button>
@@ -514,6 +524,7 @@ function openCatModal(cat) {
   document.getElementById('cat-modal-titel').textContent = cat ? 'Categorie bewerken' : 'Nieuwe categorie';
   document.getElementById('cat-f-naam').value = cat?.naam || '';
   document.getElementById('cat-f-omschrijving').value = cat?.omschrijving || '';
+  document.getElementById('cat-f-rally-type').value = cat?.rally_type || '';
 
   const modal = document.getElementById('cat-modal');
   modal.style.display = 'flex';
@@ -525,6 +536,7 @@ function openCatModal(cat) {
       editie_id:   actieveEditie.id,
       naam:        document.getElementById('cat-f-naam').value.trim(),
       omschrijving: document.getElementById('cat-f-omschrijving').value.trim(),
+      rally_type:  document.getElementById('cat-f-rally-type').value || null,
       volgorde:    categorieen.length,
     };
     try {

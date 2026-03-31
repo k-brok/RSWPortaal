@@ -39,10 +39,13 @@ router.post('/', beheerder, async (req, res) => {
 
 // PUT  /api/admin/editie-categorieen/:id
 router.put('/:id', beheerder, async (req, res) => {
-  const { naam, omschrijving, volgorde } = req.body;
+  const { naam, omschrijving, volgorde, rally_type } = req.body;
   if (!naam?.trim()) return res.status(400).json({ message: 'Naam is verplicht' });
+  const toegestaneTypes = ['tocht', 'spelmiddag', null, undefined, ''];
+  if (!toegestaneTypes.includes(rally_type))
+    return res.status(400).json({ message: 'Ongeldig rally_type' });
   try {
-    await m.categorieBijwerken(Number(req.params.id), { naam, omschrijving, volgorde });
+    await m.categorieBijwerken(Number(req.params.id), { naam, omschrijving, volgorde, rally_type: rally_type || null });
     res.status(204).end();
   } catch (e) { fout(res, e); }
 });

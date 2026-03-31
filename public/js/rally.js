@@ -408,7 +408,11 @@ async function schermScan(stationToken, patrouilleToken) {
       station_token:    stationToken,
       patrouille_token: patrouilleToken,
     });
-    schermScoreFormulier(stationToken, data);
+    if (data.is_start_positie) {
+      schermStartpostBevestiging(stationToken, data);
+    } else {
+      schermScoreFormulier(stationToken, data);
+    }
   } catch (e) {
     root().innerHTML = `
       <div class="rally-page">
@@ -420,6 +424,42 @@ async function schermScan(stationToken, patrouilleToken) {
     `;
     document.getElementById('btn-terug').addEventListener('click', () => valideerEnToonWachten(stationToken));
   }
+}
+
+// ── Scherm: startpost bevestiging ─────────────────────────────────
+
+function schermStartpostBevestiging(stationToken, scanData) {
+  const { patrouille, station } = scanData;
+
+  root().innerHTML = `
+    <div class="rally-page">
+      <div class="rally-station-bar">
+        <div class="rally-station-info">
+          <div class="rally-station-naam">${esc(station.naam)}</div>
+          <div class="rally-station-sub">${esc(station.categorie_naam || '—')}</div>
+        </div>
+        <div class="rally-patrouille-badge">
+          <div class="rally-patrouille-nummer">#${patrouille.nummer ?? '?'}</div>
+          <div class="rally-patrouille-label">Patrouille</div>
+        </div>
+      </div>
+
+      <div class="rally-content" style="text-align:center;padding:32px 16px">
+        <div style="font-size:3rem;margin-bottom:12px">&#9654;</div>
+        <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">Startpost geregistreerd</div>
+        <p class="text-muted" style="font-size:.9rem;margin-bottom:24px">
+          Vertrek naar je eerste post.<br>Punten worden behaald onderweg.
+        </p>
+        <button class="btn btn-primary w-full" id="btn-volgende">
+          &#8594; Klaar, volgende patrouille
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-volgende').addEventListener('click', () => {
+    valideerEnToonWachten(stationToken);
+  });
 }
 
 // ── Scherm: score formulier ────────────────────────────────────────

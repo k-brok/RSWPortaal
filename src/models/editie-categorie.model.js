@@ -7,7 +7,7 @@ const db = require('../config/db');
 async function alleCategorieen(editieId) {
   const [rows] = await db.execute(`
     SELECT ec.id, ec.editie_id, ec.naam, ec.omschrijving,
-           ec.wegingspercentage, ec.volgorde,
+           ec.wegingspercentage, ec.volgorde, ec.rally_type,
            COUNT(DISTINCT es.id) AS subcategorie_count,
            COUNT(DISTINCT ecr.id) AS criterium_count,
            EXISTS (
@@ -109,11 +109,11 @@ async function categorieAanmaken({ editie_id, naam, omschrijving, wegingspercent
   return { id: r.insertId };
 }
 
-async function categorieBijwerken(id, { naam, omschrijving, volgorde }) {
-  // wegingspercentage apart via bijwerkenWegingen — hier alleen tekst en volgorde
+async function categorieBijwerken(id, { naam, omschrijving, volgorde, rally_type }) {
+  // wegingspercentage apart via bijwerkenWegingen — hier alleen tekst, volgorde en rally_type
   await db.execute(
-    `UPDATE editie_categorieen SET naam=?, omschrijving=?, volgorde=? WHERE id=?`,
-    [naam.trim(), omschrijving || null, volgorde || 0, id]
+    `UPDATE editie_categorieen SET naam=?, omschrijving=?, volgorde=?, rally_type=? WHERE id=?`,
+    [naam.trim(), omschrijving || null, volgorde || 0, rally_type || null, id]
   );
 }
 

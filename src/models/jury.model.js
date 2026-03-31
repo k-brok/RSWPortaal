@@ -202,27 +202,32 @@ async function bijwerkenStations(momentId, stations) {
 }
 
 async function aanmaken({ editie_id, categorie_id, naam, start_tijd, eind_tijd, jureer_modus,
-                          rally_modus, score_niveau, aankomst_punten }) {
+                          rally_modus, score_niveau, aankomst_punten, aankomst_punten_modus,
+                          max_duur_minuten }) {
   const [r] = await db.execute(
     `INSERT INTO jurymomenten
        (editie_id, categorie_id, naam, start_tijd, eind_tijd, jureer_modus,
-        rally_modus, score_niveau, aankomst_punten)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        rally_modus, score_niveau, aankomst_punten, aankomst_punten_modus, max_duur_minuten)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [editie_id, categorie_id, naam || null, naarMysqlDT(start_tijd), naarMysqlDT(eind_tijd), jureer_modus || 'numeriek',
-     rally_modus ? 1 : 0, score_niveau || 'criterium', aankomst_punten ?? 0]
+     rally_modus ? 1 : 0, score_niveau || 'criterium', aankomst_punten ?? 0,
+     aankomst_punten_modus || 'geen', max_duur_minuten || null]
   );
   return vindMoment(r.insertId);
 }
 
 async function bijwerken(momentId, { categorie_id, naam, start_tijd, eind_tijd, jureer_modus,
-                                     rally_modus, score_niveau, aankomst_punten }) {
+                                     rally_modus, score_niveau, aankomst_punten, aankomst_punten_modus,
+                                     max_duur_minuten }) {
   await db.execute(
     `UPDATE jurymomenten
      SET categorie_id=?, naam=?, start_tijd=?, eind_tijd=?, jureer_modus=?,
-         rally_modus=?, score_niveau=?, aankomst_punten=?
+         rally_modus=?, score_niveau=?, aankomst_punten=?, aankomst_punten_modus=?,
+         max_duur_minuten=?
      WHERE id=?`,
     [categorie_id, naam || null, naarMysqlDT(start_tijd), naarMysqlDT(eind_tijd), jureer_modus || 'numeriek',
      rally_modus ? 1 : 0, score_niveau || 'criterium', aankomst_punten ?? 0,
+     aankomst_punten_modus || 'geen', max_duur_minuten || null,
      momentId]
   );
   return vindMoment(momentId);

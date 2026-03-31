@@ -28,13 +28,14 @@ router.get('/momenten', beheer, async (req, res) => {
 // POST /momenten
 router.post('/momenten', beheer, async (req, res) => {
   const { editie_id, categorie_id, naam, start_tijd, eind_tijd, jureer_modus,
-          rally_modus, score_niveau, aankomst_punten } = req.body;
+          rally_modus, score_niveau, aankomst_punten, aankomst_punten_modus,
+          max_duur_minuten } = req.body;
   if (!editie_id || !categorie_id || !start_tijd || !eind_tijd)
     return res.status(400).json({ message: 'editie_id, categorie_id, start_tijd en eind_tijd zijn verplicht' });
   try {
     res.status(201).json(await juryModel.aanmaken({
       editie_id, categorie_id, naam, start_tijd, eind_tijd, jureer_modus,
-      rally_modus, score_niveau, aankomst_punten,
+      rally_modus, score_niveau, aankomst_punten, aankomst_punten_modus, max_duur_minuten,
     }));
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -44,13 +45,14 @@ router.post('/momenten', beheer, async (req, res) => {
 // PUT /momenten/:id
 router.put('/momenten/:id', beheer, async (req, res) => {
   const { categorie_id, naam, start_tijd, eind_tijd, jureer_modus,
-          rally_modus, score_niveau, aankomst_punten } = req.body;
+          rally_modus, score_niveau, aankomst_punten, aankomst_punten_modus,
+          max_duur_minuten } = req.body;
   if (!categorie_id || !start_tijd || !eind_tijd)
     return res.status(400).json({ message: 'categorie_id, start_tijd en eind_tijd zijn verplicht' });
   try {
     const m = await juryModel.bijwerken(Number(req.params.id), {
       categorie_id, naam, start_tijd, eind_tijd, jureer_modus,
-      rally_modus, score_niveau, aankomst_punten,
+      rally_modus, score_niveau, aankomst_punten, aankomst_punten_modus, max_duur_minuten,
     });
     if (!m) return res.status(404).json({ message: 'Niet gevonden' });
     res.json(m);
