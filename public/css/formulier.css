@@ -530,3 +530,196 @@
 .formulier-fout-icon { font-size: 3rem; opacity: 0.5; }
 .formulier-fout-titel { font-size: 1.2rem; font-weight: 700; }
 .formulier-fout-bericht { font-size: 0.9rem; color: var(--color-text-muted); max-width: 320px; }
+
+/* ── Rally v2: sessie-gebaseerde landingspagina ────────────────── */
+
+/* Sessie badge (timer in header) */
+.rally-sessie-badge {
+  font-size: 0.75rem;
+  background: rgba(0,0,0,0.25);
+  color: rgba(255,255,255,0.85);
+  border-radius: var(--radius-sm);
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+/* Sectie header (boven de patrouillelijst) */
+.rally-sectie-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 4px 2px;
+}
+
+/* Kleine badge met aantal */
+.rally-badge {
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 12px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 22px;
+  text-align: center;
+}
+
+/* Patrouille-rij in de lijst */
+.rally-patrouille-rij {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.rally-patrouille-rij:hover,
+.rally-patrouille-rij:focus {
+  background: var(--color-surface-alt);
+}
+
+.rally-patrouille-rij.highlight {
+  border-color: var(--color-primary);
+}
+
+.rally-patrouille-rij-nummer {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  min-width: 44px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.rally-patrouille-rij-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rally-patrouille-rij-naam {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.rally-patrouille-rij-pijl {
+  font-size: 1.4rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+/* Instructie-blok */
+.rally-instructie {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  margin-top: 4px;
+}
+
+.rally-instructie-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.rally-instructie p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Patrouille-info pagina (zelf-scan) */
+.rally-timer-blok {
+  margin: 16px auto 0;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px 24px;
+  display: inline-block;
+  min-width: 140px;
+}
+
+.rally-timer-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.rally-timer-waarde {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+}
+
+.rally-info-rij {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+}
+
+.rally-info-rij.accent {
+  border-color: var(--color-primary);
+  background: rgba(233, 69, 96, 0.08);
+}
+
+.rally-info-label {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.rally-info-waarde {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Tocht gestart pagina */
+.rally-start-tijden {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  margin: 0 auto;
+  max-width: 280px;
+}
+
+.rally-start-tijdrij {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.rally-start-tijdrij.accent {
+  border-color: var(--color-warning);
+  background: rgba(255, 152, 0, 0.08);
+}
+
+.rally-start-tijdrij .rally-info-waarde {
+  font-size: 1.05rem;
+}

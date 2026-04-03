@@ -572,6 +572,264 @@ async function vindSubkampPatrouille(patrouilleId, editieId) {
   return null;
 }
 
+// ── Station sessies (httpOnly cookie) ─────────────────────────────
+
+const SESSIE_DUUR_MS = 60 * 60 * 1000; // 1 uur
+
+async function maakStationSessie(stationId) {
+  // Verwijder verlopen sessies voor dit station (lazy cleanup)
+  await db.execute(
+    `DELETE FROM rally_station_sessies WHERE verlopen_op < NOW()`
+  );
+
+  const token     = crypto.randomBytes(32).toString('hex');
+  const verlopen  = new Date(Date.now() + SESSIE_DUUR_MS);
+  await db.execute(
+    `INSERT INTO rally_station_sessies (station_id, sessie_token, verlopen_op)
+     VALUES (?, ?, ?)`,
+    [stationId, token, verlopen]
+  );
+  return { token, verlopen_op: verlopen.toISOString() };
+}
+
+async function valideerStationSessie(sessieToken) {
+  if (!sessieToken) return null;
+  const [rows] = await db.execute(
+    `SELECT rss.station_id, rss.verlopen_op,
+            rs.naam AS station_naam, rs.jurymoment_id, rs.punten AS station_punten,
+            jm.editie_id, jm.categorie_id, jm.naam AS moment_naam,
+            jm.start_tijd, jm.eind_tijd, jm.handmatig_open,
+            jm.aankomst_punten_modus, jm.max_duur_minuten, jm.rally_modus,
+            ec.naam AS categorie_naam, ec.rally_type
+     FROM rally_station_sessies rss
+     JOIN rally_stations rs ON rs.id = rss.station_id
+     JOIN jurymomenten jm   ON jm.id = rs.jurymoment_id
+     JOIN editie_categorieen ec ON ec.id = jm.categorie_id
+     WHERE rss.sessie_token = ? AND rss.verlopen_op > NOW()`,
+    [sessieToken]
+  );
+  if (!rows[0]) return null;
+  const r = rows[0];
+  return {
+    station: {
+      id:     r.station_id,
+      naam:   r.station_naam,
+      punten: r.station_punten != null ? Number(r.station_punten) : null,
+    },
+    moment: {
+      id:                    r.jurymoment_id,
+      editie_id:             r.editie_id,
+      categorie_id:          r.categorie_id,
+      naam:                  r.moment_naam,
+      start_tijd:            r.start_tijd,
+      eind_tijd:             r.eind_tijd,
+      handmatig_open:        !!r.handmatig_open,
+      rally_modus:           !!r.rally_modus,
+      aankomst_punten_modus: r.aankomst_punten_modus || 'geen',
+      max_duur_minuten:      r.max_duur_minuten != null ? Number(r.max_duur_minuten) : null,
+    },
+    rally_type:     r.rally_type ?? null,
+    categorie_naam: r.categorie_naam,
+    verlopen_op:    r.verlopen_op,
+  };
+}
+
+// Patrouilles die momenteel 'op_post' zijn bij een station (voor de landingspagina)
+async function patrouillesOpPost(momentId, stationId, editieId) {
+  const [bezoeken] = await db.execute(`
+    SELECT pb.id AS bezoek_id, pb.patrouille_id, pb.status, pb.aankomst_tijd
+    FROM patrouille_bezoeken pb
+    WHERE pb.jurymoment_id = ? AND pb.station_id = ?
+      AND pb.status = 'op_post'
+    ORDER BY pb.aankomst_tijd
+  `, [momentId, stationId]);
+
+  if (!bezoeken.length) return [];
+
+  const [plRows] = await db.execute(
+    `SELECT cellen FROM plattegronden WHERE editie_id = ?`, [editieId]
+  );
+  const cellen = plRows[0]?.cellen
+    ? (typeof plRows[0].cellen === 'string' ? JSON.parse(plRows[0].cellen) : plRows[0].cellen)
+    : {};
+
+  const nummerMap = {};
+  Object.values(cellen).forEach(cel => {
+    if (cel.patrouille_id) {
+      nummerMap[cel.patrouille_id] = cel.nummer ?? cel.patrouilleNummer ?? null;
+    }
+  });
+
+  return bezoeken.map(b => ({
+    bezoek_id:    b.bezoek_id,
+    patrouille_id: b.patrouille_id,
+    nummer:       nummerMap[b.patrouille_id] ?? null,
+    aankomst_tijd: b.aankomst_tijd,
+  }));
+}
+
+// Registreer startpost: aankomst + direct vertrekken (timer-start, geen op-post)
+async function registreerStartpost(momentId, stationId, patrouilleId) {
+  await db.execute(
+    `INSERT IGNORE INTO patrouille_bezoeken
+       (jurymoment_id, station_id, patrouille_id, status, vertrek_tijd)
+     VALUES (?, ?, ?, 'vertrokken', NOW())`,
+    [momentId, stationId, patrouilleId]
+  );
+  const [rows] = await db.execute(
+    `SELECT * FROM patrouille_bezoeken WHERE station_id=? AND patrouille_id=?`,
+    [stationId, patrouilleId]
+  );
+  return rows[0] ?? null;
+}
+
+// Registreer aankomst van een patrouille op post (nieuwe sessie-gebaseerde flow)
+async function registreerAankomstOpPost(momentId, stationId, patrouilleId, aankomstPositie) {
+  // INSERT IGNORE zodat dubbele scans geen fout geven
+  await db.execute(
+    `INSERT IGNORE INTO patrouille_bezoeken
+       (jurymoment_id, station_id, patrouille_id, aankomst_positie, status)
+     VALUES (?, ?, ?, ?, 'op_post')`,
+    [momentId, stationId, patrouilleId, aankomstPositie ?? null]
+  );
+  const [rows] = await db.execute(
+    `SELECT * FROM patrouille_bezoeken WHERE station_id=? AND patrouille_id=?`,
+    [stationId, patrouilleId]
+  );
+  return rows[0] ?? null;
+}
+
+// Bezoek + bestaande scores ophalen (voor heropenen vanuit de lijst)
+async function patrouilleBezoekMetScores(momentId, stationId, patrouilleId) {
+  const [rows] = await db.execute(
+    `SELECT id AS bezoek_id, status, aankomst_tijd
+     FROM patrouille_bezoeken
+     WHERE jurymoment_id=? AND station_id=? AND patrouille_id=?`,
+    [momentId, stationId, patrouilleId]
+  );
+  if (!rows[0]) return null;
+
+  const bezoek = rows[0];
+  const [scores] = await db.execute(
+    `SELECT criterium_id, score FROM jury_scores
+     WHERE jurymoment_id=? AND patrouille_id=?`,
+    [momentId, patrouilleId]
+  );
+  return {
+    ...bezoek,
+    scores: Object.fromEntries(scores.map(s => [s.criterium_id, Number(s.score)])),
+  };
+}
+
+// Patrouille afmelden van post (status → vertrokken)
+async function zetVertrokken(bezoekId) {
+  await db.execute(
+    `UPDATE patrouille_bezoeken
+     SET status='vertrokken', vertrek_tijd=NOW()
+     WHERE id=? AND status='op_post'`,
+    [bezoekId]
+  );
+}
+
+// Patrouille-info voor zelf-scan (zonder station-sessie)
+async function patrouilleInfoVoorToken(token) {
+  const patrouille = await vindPatrouilleToken(token);
+  if (!patrouille) return null;
+
+  const { patrouille_id, nummer } = patrouille;
+
+  // Haal het actieve rally-moment op (meest recente moment waar de patrouille een bezoek heeft)
+  const [[momentRij]] = await db.execute(`
+    SELECT jm.id AS moment_id, jm.max_duur_minuten, ec.rally_type
+    FROM patrouille_bezoeken pb
+    JOIN jurymomenten jm        ON jm.id  = pb.jurymoment_id
+    JOIN editie_categorieen ec  ON ec.id  = jm.categorie_id
+    WHERE pb.patrouille_id = ?
+    ORDER BY pb.aankomst_tijd DESC
+    LIMIT 1
+  `, [patrouille_id]).catch(() => [[]]);
+
+  if (!momentRij) {
+    // Patrouille heeft nog nooit een post bezocht
+    return {
+      patrouille:         { id: patrouille_id, nummer },
+      huidig_post:        null,
+      laatste_vertrek_post: null,
+      volgende_post:      null,
+      start_tijd:         null,
+      eind_tijd:          null,
+      tijd_resterend_sec: null,
+      tijd_verstreken:    false,
+    };
+  }
+
+  const momentId  = momentRij.moment_id;
+  const maxDuur   = momentRij.max_duur_minuten;
+
+  // Alle bezoeken van deze patrouille in dit moment
+  const [bezoeken] = await db.execute(`
+    SELECT pb.station_id, pb.status, pb.aankomst_tijd, pb.vertrek_tijd,
+           rs.naam AS station_naam
+    FROM patrouille_bezoeken pb
+    JOIN rally_stations rs ON rs.id = pb.station_id
+    WHERE pb.patrouille_id = ? AND pb.jurymoment_id = ?
+    ORDER BY pb.aankomst_tijd
+  `, [patrouille_id, momentId]);
+
+  // Huidige post (op_post)
+  const actief = bezoeken.find(b => b.status === 'op_post');
+  const huidigPost = actief?.station_naam ?? null;
+
+  // Laatste vertrokken post
+  const vertrokkenBezoeken = bezoeken.filter(b => b.status === 'vertrokken' && b.vertrek_tijd);
+  vertrokkenBezoeken.sort((a, b) => new Date(b.vertrek_tijd) - new Date(a.vertrek_tijd));
+  const laatsteVertrekPost = vertrokkenBezoeken[0]?.station_naam ?? null;
+
+  // Timer (start = MIN aankomst_tijd van alle bezoeken)
+  let startTijd    = null;
+  let eindTijd     = null;
+  let tijdResterend  = null;
+  let tijdVerstreken = false;
+
+  if (bezoeken.length && maxDuur) {
+    const startMs = Math.min(...bezoeken.map(b => new Date(b.aankomst_tijd).getTime()));
+    startTijd = new Date(startMs).toISOString();
+    const eindMs  = startMs + maxDuur * 60_000;
+    eindTijd  = new Date(eindMs).toISOString();
+    const resterendMs = eindMs - Date.now();
+    tijdResterend  = Math.max(0, Math.round(resterendMs / 1000));
+    tijdVerstreken = resterendMs <= 0;
+  }
+
+  // Volgende post bepalen (alleen bij tocht)
+  let volgendePost = null;
+  if (momentRij.rally_type === 'tocht') {
+    const route = await vindPatrouilleRoute(patrouille_id, momentId);
+    if (route) {
+      const bezoekMap = Object.fromEntries(bezoeken.map(b => [b.station_id, b]));
+      for (const pos of route.stations) {
+        const b = bezoekMap[pos.station_id];
+        const voltooid = !!b && b.status !== 'op_post';
+        if (!voltooid) {
+          if (!b) volgendePost = pos.naam;
+          break;
+        }
+      }
+    }
+  }
+
+  return {
+    patrouille:           { id: patrouille_id, nummer },
+    huidig_post:          huidigPost,
+    laatste_vertrek_post: laatsteVertrekPost,
+    volgende_post:        volgendePost,
+    start_tijd:           startTijd,
+    eind_tijd:            eindTijd,
+    tijd_resterend_sec:   tijdResterend,
+    tijd_verstreken:      tijdVerstreken,
+  };
+}
+
 // ── Tracking overzicht ─────────────────────────────────────────────
 
 async function trackingOverzicht(editieId) {
@@ -729,6 +987,15 @@ module.exports = {
   telBezoeken,
   zetBezoekBezig,
   vindSubkampPatrouille,
+  // Station sessies
+  registreerStartpost,
+  maakStationSessie,
+  valideerStationSessie,
+  patrouillesOpPost,
+  registreerAankomstOpPost,
+  patrouilleBezoekMetScores,
+  zetVertrokken,
+  patrouilleInfoVoorToken,
   // Tracking
   trackingOverzicht,
 };

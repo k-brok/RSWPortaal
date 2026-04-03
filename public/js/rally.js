@@ -1,438 +1,136 @@
 // public/js/rally.js — Rally scan pagina (standalone, geen header/sidebar)
-// Flow:
-//   1. Station selectie (camera QR-scan of handmatige lijst)
-//   2. Wacht op patrouille QR scan (camera, standaard actief als vorige sessie dat gebruikte)
-//   3. Score formulier invullen voor die patrouille
-//   4. Opslaan → terug naar wachten
 //
-// Opslag: localStorage (geen persoonsgegevens — enkel anonieme tokens).
-// Valt onder "strikt noodzakelijke functionaliteit" → geen cookiemelding vereist.
+// Flow (geen interne camera — QR-codes worden gescand met de camera-app van het apparaat):
+//
+//  Jury:
+//   1. Scan station-QR → /rally?station=TOKEN
+//      → server maakt httpOnly sessie-cookie (1 uur geldig)
+//      → station-landingspagina met lijst van patrouilles op post
+//   2. Scan patrouille-QR → /rally?patrouille=TOKEN (met geldige sessie-cookie)
+//      → patrouille aangemeld als 'op post'
+//      → direct naar scoreformulier
+//   3. Scoreformulier: 'Opslaan' of 'Vertrokken' knop
+//
+//  Patrouille (zelf-scan zonder sessie-cookie):
+//   /rally?patrouille=TOKEN → info over huidige post + volgende post + resterende tijd
 
 import { BASE_PATH } from './config.js';
 
 const BASE = BASE_PATH;
 const root = () => document.getElementById('rally-root');
 
-// ── Lokale opslag sleutels ─────────────────────────────────────────
-const STATION_KEY = 'rally_station_token'; // station-token (herbruikbaar zolang moment open)
-const EDITIE_KEY  = 'rally_editie_id';     // editie-ID voor de stationslijst
-const CAMERA_KEY  = 'rally_camera';        // '1' als jury de camera-voorkeur heeft
+let pollingTimer = null;
 
-function getPref(key)        { try { return localStorage.getItem(key); } catch { return null; } }
-function setPref(key, val)   { try { localStorage.setItem(key, val); } catch {} }
-function delPref(key)        { try { localStorage.removeItem(key); } catch {} }
-function cameraVoorkeur()    { return getPref(CAMERA_KEY) === '1'; }
-function setCameraVoorkeur(v){ setPref(CAMERA_KEY, v ? '1' : '0'); }
-
-// ── Init ───────────────────────────────────────────────────────────
+// ── Init ────────────────────────────────────────────────────────────
 
 async function init() {
-  const params       = new URLSearchParams(location.search);
-  const patToken     = params.get('patrouille');
-  const stationToken = params.get('station') || getPref(STATION_KEY);
+  const params          = new URLSearchParams(location.search);
+  const stationToken    = params.get('station');
+  const patrouilleToken = params.get('patrouille');
 
-  if (patToken && stationToken) {
-    await schermScan(stationToken, patToken);
-  } else if (patToken) {
-    schermStationKeuze({ pendingPatrouilleToken: patToken });
-  } else if (stationToken) {
-    await valideerEnToonWachten(stationToken);
+  // Schone URL — verwijder tokens uit de adresbalk
+  if (stationToken || patrouilleToken) {
+    history.replaceState({}, '', location.pathname);
+  }
+
+  if (stationToken) {
+    toonLaden('Station verbinden…');
+    try {
+      const data = await apiGet(`/api/rally/station-scan/${encodeURIComponent(stationToken)}`);
+      toonStationLanding(data);
+    } catch (e) {
+      toonFoutPagina(e.message);
+    }
+
+  } else if (patrouilleToken) {
+    toonLaden('Patrouille ophalen…');
+    try {
+      const data = await apiPost('/api/rally/patrouille-aankomst', { patrouille_token: patrouilleToken });
+      if (data.is_start_positie) {
+        toonTochtGestart(data);
+      } else {
+        toonPatrouilleDetail(data);
+      }
+    } catch (e) {
+      if (e.status === 401) {
+        // Geen station-sessie → zelf-scan info tonen
+        try {
+          const info = await apiGet(`/api/rally/patrouille-info/${encodeURIComponent(patrouilleToken)}`);
+          toonPatrouilleInfo(info);
+        } catch (e2) {
+          toonFoutPagina(e2.message);
+        }
+      } else if (e.status === 409) {
+        // Al vertrokken
+        toonFoutPagina(e.message, true);
+      } else {
+        toonFoutPagina(e.message);
+      }
+    }
+
   } else {
-    schermStationKeuze({});
-  }
-}
-
-// ── Scherm: station kiezen ─────────────────────────────────────────
-
-function schermStationKeuze({ pendingPatrouilleToken } = {}) {
-  const editieId = getPref(EDITIE_KEY) || '';
-
-  root().innerHTML = `
-    <div class="rally-page">
-      <div class="rally-intro">
-        <div class="rally-intro-icon">&#128204;</div>
-        <h1 class="rally-intro-titel">RSW Rally</h1>
-        <p class="rally-intro-sub">Kies je station via de camera of de lijst</p>
-      </div>
-
-      <div class="rally-content">
-
-        <!-- Camera scanner voor station-QR -->
-        <div class="subcategorie-card open">
-          <div class="subcategorie-header">
-            <span class="subcategorie-titel">&#127909; Scan station-QR</span>
-            <button class="btn btn-primary btn-sm" id="btn-camera-station">Camera starten</button>
-          </div>
-          <div class="subcategorie-inhoud" style="padding:12px">
-            <div id="station-camera-container" style="display:none">
-              <video id="station-camera-video" class="rally-camera-preview" autoplay playsinline muted></video>
-              <p class="text-muted" style="margin:8px 0 0;text-align:center;font-size:.82rem">
-                Houd de station-QR voor de camera
-              </p>
-              <button class="btn btn-ghost btn-sm w-full" id="btn-camera-station-stop" style="margin-top:8px">
-                &#9632; Camera stoppen
-              </button>
-            </div>
-            <div id="station-fout-camera" class="alert alert-error" style="display:none;margin-top:8px"></div>
-          </div>
-        </div>
-
-        <!-- Handmatige stationslijst -->
-        <div class="subcategorie-card open">
-          <div class="subcategorie-header">
-            <span class="subcategorie-titel">&#128203; Of kies uit de lijst</span>
-            <span class="subcategorie-chevron">&#9660;</span>
-          </div>
-          <div class="subcategorie-inhoud" style="padding:12px">
-            <div class="form-group" style="margin-bottom:10px">
-              <label class="form-label" style="font-size:.82rem">Editie ID</label>
-              <div style="display:flex;gap:8px">
-                <input class="form-input" id="editie-id-input" type="number"
-                  placeholder="bijv. 1" value="${editieId}" style="flex:1" />
-                <button class="btn btn-ghost btn-sm" id="btn-laad-stations">&#128260; Laden</button>
-              </div>
-            </div>
-            <div id="stations-lijst"></div>
-          </div>
-        </div>
-
-        <div id="station-fout" class="alert alert-error" style="display:none"></div>
-
-      </div>
-    </div>
-  `;
-
-  // Camera voor station-QR
-  let stationCameraStream = null;
-  let stationCameraActief = false;
-
-  document.getElementById('btn-camera-station').addEventListener('click', async () => {
-    if (!stationCameraActief) startStationCamera();
-  });
-
-  async function startStationCamera() {
-    const container = document.getElementById('station-camera-container');
-    const video     = document.getElementById('station-camera-video');
-    const foutEl    = document.getElementById('station-fout-camera');
-    container.style.display = 'block';
-    stationCameraActief = true;
-    document.getElementById('btn-camera-station').textContent = 'Camera actief…';
-    document.getElementById('btn-camera-station').disabled = true;
-
-    if (!('BarcodeDetector' in window)) {
-      container.innerHTML = '<p class="text-muted text-sm">Camera QR-scan niet ondersteund in deze browser.<br>Gebruik de stationslijst hieronder.</p>';
-      return;
-    }
-
+    // Geen params → probeer bestaande sessie te herstellen
+    toonLaden('Sessie controleren…');
     try {
-      stationCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      video.srcObject = stationCameraStream;
-
-      const detector = new BarcodeDetector({ formats: ['qr_code'] });
-      const loop = async () => {
-        if (!stationCameraActief) return;
-        try {
-          const codes = await detector.detect(video);
-          if (codes.length) {
-            const raw = codes[0].rawValue;
-            stopStationCamera();
-            setCameraVoorkeur(true);
-            await kiesStation(raw, pendingPatrouilleToken);
-            return;
-          }
-        } catch { /* detectiefout overgeslagen */ }
-        requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
+      const data = await apiGet('/api/rally/sessie');
+      toonStationLanding(data);
     } catch (e) {
-      foutEl.textContent = `Camera niet beschikbaar: ${e.message}`;
-      foutEl.style.display = 'block';
-      container.style.display = 'none';
-      stationCameraActief = false;
+      if (e.status === 401) {
+        toonGeenSessie();
+      } else {
+        toonFoutPagina(e.message);
+      }
     }
-  }
-
-  function stopStationCamera() {
-    stationCameraActief = false;
-    if (stationCameraStream) {
-      stationCameraStream.getTracks().forEach(t => t.stop());
-      stationCameraStream = null;
-    }
-    const container = document.getElementById('station-camera-container');
-    if (container) container.style.display = 'none';
-    const btn = document.getElementById('btn-camera-station');
-    if (btn) { btn.textContent = 'Camera starten'; btn.disabled = false; }
-  }
-
-  document.getElementById('btn-camera-station-stop')?.addEventListener('click', stopStationCamera);
-
-  document.getElementById('btn-laad-stations').addEventListener('click', async () => {
-    const id = document.getElementById('editie-id-input').value.trim();
-    if (!id) return;
-    setPref(EDITIE_KEY, id);
-    await laadOpenStations(id, pendingPatrouilleToken);
-  });
-
-  if (editieId) laadOpenStations(editieId, pendingPatrouilleToken);
-}
-
-async function laadOpenStations(editieId, pendingPatrouilleToken) {
-  const el = document.getElementById('stations-lijst');
-  if (!el) return;
-  el.innerHTML = '<p class="text-muted text-sm">Laden…</p>';
-
-  try {
-    const stations = await apiGet(`/api/rally/stations?editie_id=${editieId}`);
-    if (!stations.length) {
-      el.innerHTML = '<p class="text-muted text-sm">Geen open rally-stations gevonden.</p>';
-      return;
-    }
-    el.innerHTML = stations.map(s => `
-      <button class="btn btn-ghost w-full"
-        style="margin-bottom:4px;text-align:left;justify-content:flex-start;gap:8px;padding:8px 10px"
-        data-token="${esc(s.token)}">
-        <strong>${esc(s.station_naam)}</strong>
-        <span class="text-muted" style="font-size:.8rem"> — ${esc(s.categorie_naam)}</span>
-      </button>
-    `).join('');
-    el.querySelectorAll('button[data-token]').forEach(btn => {
-      btn.addEventListener('click', () => kiesStation(btn.dataset.token, pendingPatrouilleToken));
-    });
-  } catch (e) {
-    el.innerHTML = `<p class="text-muted text-sm">Fout: ${esc(e.message)}</p>`;
   }
 }
 
-async function kiesStation(token, pendingPatrouilleToken) {
-  const pureToken = extractToken(token, 'token') || token.trim();
-  toonFout('station-fout', null);
-  try {
-    const data = await apiGet(`/api/rally/station/${encodeURIComponent(pureToken)}`);
-    setPref(STATION_KEY, pureToken);
-    const editieId = data.moment?.editie_id;
-    if (editieId) setPref(EDITIE_KEY, editieId);
+// ── View: laden ─────────────────────────────────────────────────────
 
-    if (pendingPatrouilleToken) {
-      await schermScan(pureToken, pendingPatrouilleToken);
-    } else {
-      schermWachten(data, pureToken);
-    }
-  } catch (e) {
-    toonFout('station-fout', e.message);
-  }
-}
-
-async function valideerEnToonWachten(stationToken) {
-  try {
-    const data = await apiGet(`/api/rally/station/${encodeURIComponent(stationToken)}`);
-    if (data.gesloten) {
-      delPref(STATION_KEY);
-      schermStationKeuze({});
-      return;
-    }
-    schermWachten(data, stationToken);
-  } catch {
-    delPref(STATION_KEY);
-    schermStationKeuze({});
-  }
-}
-
-// ── Scherm: wachten op patrouille ──────────────────────────────────
-
-function schermWachten(stationData, stationToken) {
-  const { station, moment, categorie_naam } = stationData;
-  const gebruiksCamera = cameraVoorkeur();
-
-  root().innerHTML = `
-    <div class="rally-page">
-
-      <!-- Sticky station header -->
-      <div class="rally-station-bar">
-        <div class="rally-station-info">
-          <div class="rally-station-naam">${esc(station?.naam || '—')}</div>
-          <div class="rally-station-sub">${esc(categorie_naam || moment?.naam || '—')}</div>
-        </div>
-        <button class="btn btn-sm" id="btn-wissel-station"
-          style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3);flex-shrink:0">
-          &#8635; Wissel
-        </button>
-      </div>
-
-      <div class="rally-content">
-
-        <!-- Camera scanner (primair) -->
-        <div class="subcategorie-card open">
-          <div class="subcategorie-header">
-            <span class="subcategorie-titel">&#127909; Scan patrouille-QR</span>
-            <button class="btn btn-sm ${gebruiksCamera ? 'btn-primary' : 'btn-ghost'}" id="btn-camera">
-              ${gebruiksCamera ? 'Camera uit' : 'Camera aan'}
-            </button>
-          </div>
-          <div class="subcategorie-inhoud" style="padding:12px">
-            <div id="camera-container" style="display:${gebruiksCamera ? 'block' : 'none'}">
-              <video id="camera-video" class="rally-camera-preview" autoplay playsinline muted></video>
-              <p class="text-muted" style="margin:8px 0 0;text-align:center;font-size:.82rem">
-                Houd de QR-code voor de camera
-              </p>
-            </div>
-            <div id="camera-fout" class="alert alert-error" style="display:none;margin-top:8px"></div>
-          </div>
-        </div>
-
-        <!-- Alternatief: tekstinvoer (hardware scanner / copy-paste) -->
-        <div class="subcategorie-card">
-          <div class="subcategorie-header">
-            <span class="subcategorie-titel">&#9000;&#65039; Handmatige invoer</span>
-            <span class="subcategorie-chevron">&#9660;</span>
-          </div>
-          <div class="subcategorie-inhoud" style="padding:12px">
-            <input class="form-input" id="patrouille-input" type="text"
-              placeholder="Scan of plak token hier…" autocomplete="off" />
-            <div class="form-hint" style="margin-top:6px">
-              Hardware QR-scanners "typen" de URL automatisch in dit veld.
-            </div>
-          </div>
-        </div>
-
-        <div id="scan-fout" class="alert alert-error" style="display:none"></div>
-
-      </div>
-    </div>
-  `;
-
-  // ── Camera logica ─────────────────────────────────────────────────
-
-  let cameraStream = null;
-  let cameraActief = false;
-
-  async function startCamera() {
-    const container = document.getElementById('camera-container');
-    const video     = document.getElementById('camera-video');
-    const foutEl    = document.getElementById('camera-fout');
-    container.style.display = 'block';
-
-    if (!('BarcodeDetector' in window)) {
-      container.innerHTML = '<p class="text-muted text-sm">Camera QR-scan niet ondersteund in deze browser.<br>Gebruik de handmatige invoer hieronder.</p>';
-      setCameraVoorkeur(false);
-      return;
-    }
-
-    try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      video.srcObject = cameraStream;
-      cameraActief = true;
-      setCameraVoorkeur(true);
-      document.getElementById('btn-camera').textContent = 'Camera uit';
-      document.getElementById('btn-camera').className = 'btn btn-sm btn-primary';
-
-      const detector = new BarcodeDetector({ formats: ['qr_code'] });
-      const loop = async () => {
-        if (!cameraActief) return;
-        try {
-          const codes = await detector.detect(video);
-          if (codes.length) {
-            const raw      = codes[0].rawValue;
-            const patToken = extractToken(raw, 'patrouille') || raw;
-            stopCamera();
-            await schermScan(stationToken, patToken);
-            return;
-          }
-        } catch { /* detectiefout overgeslagen */ }
-        requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
-    } catch (e) {
-      foutEl.textContent = `Camera niet beschikbaar: ${e.message}`;
-      foutEl.style.display = 'block';
-      container.style.display = 'none';
-      setCameraVoorkeur(false);
-    }
-  }
-
-  function stopCamera() {
-    cameraActief = false;
-    if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-    const container = document.getElementById('camera-container');
-    if (container) container.style.display = 'none';
-    const btn = document.getElementById('btn-camera');
-    if (btn) { btn.textContent = 'Camera aan'; btn.className = 'btn btn-sm btn-ghost'; }
-    setCameraVoorkeur(false);
-  }
-
-  document.getElementById('btn-camera').addEventListener('click', () => {
-    if (cameraActief) stopCamera(); else startCamera();
-  });
-
-  // Auto-start camera als voorkeur gezet
-  if (gebruiksCamera) startCamera();
-
-  // ── Handmatige invoer ─────────────────────────────────────────────
-
-  document.getElementById('btn-wissel-station').addEventListener('click', () => {
-    stopCamera();
-    delPref(STATION_KEY);
-    schermStationKeuze({});
-  });
-
-  let scanBuffer = '';
-  let scanTimer  = null;
-  const patInput = document.getElementById('patrouille-input');
-  if (patInput) {
-    patInput.addEventListener('input', () => {
-      clearTimeout(scanTimer);
-      scanBuffer = patInput.value;
-      scanTimer = setTimeout(async () => {
-        if (!scanBuffer.trim()) return;
-        const patToken = extractToken(scanBuffer, 'patrouille') || scanBuffer.trim();
-        patInput.value = '';
-        await schermScan(stationToken, patToken);
-      }, 150);
-    });
-  }
-}
-
-// ── Scherm: laden (scan verwerken) ────────────────────────────────
-
-async function schermScan(stationToken, patrouilleToken) {
+function toonLaden(tekst = 'Laden…') {
+  stopPolling();
   root().innerHTML = `
     <div class="rally-page">
       <div class="rally-laden">
         <div class="loading-spinner"></div>
-        <p class="text-muted" style="font-size:.85rem">Patrouille ophalen…</p>
+        <p class="text-muted" style="font-size:.85rem">${esc(tekst)}</p>
       </div>
     </div>
   `;
-
-  try {
-    const data = await apiPost('/api/rally/scan', {
-      station_token:    stationToken,
-      patrouille_token: patrouilleToken,
-    });
-    if (data.is_start_positie) {
-      schermStartpostBevestiging(stationToken, data);
-    } else {
-      schermScoreFormulier(stationToken, data);
-    }
-  } catch (e) {
-    root().innerHTML = `
-      <div class="rally-page">
-        <div class="rally-content">
-          <div class="alert alert-error">${esc(e.message)}</div>
-          <button class="btn btn-ghost w-full" id="btn-terug">&#8592; Terug naar wachten</button>
-        </div>
-      </div>
-    `;
-    document.getElementById('btn-terug').addEventListener('click', () => valideerEnToonWachten(stationToken));
-  }
 }
 
-// ── Scherm: startpost bevestiging ─────────────────────────────────
+// ── View: geen sessie ────────────────────────────────────────────────
 
-function schermStartpostBevestiging(stationToken, scanData) {
-  const { patrouille, station } = scanData;
+function toonGeenSessie() {
+  stopPolling();
+  root().innerHTML = `
+    <div class="rally-page">
+      <div class="rally-content" style="text-align:center;padding:48px 16px">
+        <div style="font-size:3rem;margin-bottom:16px">&#128204;</div>
+        <h2 style="margin-bottom:8px">Geen station geselecteerd</h2>
+        <p class="text-muted" style="margin-bottom:0">
+          Scan de QR-code van een station om te beginnen.
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+// ── View: tocht gestart (startpost-scan door jury) ──────────────────
+
+function toonTochtGestart(data) {
+  stopPolling();
+  const { patrouille, station, start_tijd, eind_tijd_patrouille } = data;
+
+  const startStr = start_tijd
+    ? new Date(start_tijd).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '—';
+  const eindStr = eind_tijd_patrouille
+    ? new Date(eind_tijd_patrouille).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   root().innerHTML = `
     <div class="rally-page">
+
       <div class="rally-station-bar">
         <div class="rally-station-info">
           <div class="rally-station-naam">${esc(station.naam)}</div>
@@ -445,50 +143,262 @@ function schermStartpostBevestiging(stationToken, scanData) {
       </div>
 
       <div class="rally-content" style="text-align:center;padding:32px 16px">
-        <div style="font-size:3rem;margin-bottom:12px">&#9654;</div>
-        <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">Startpost geregistreerd</div>
+
+        <div style="font-size:3.5rem;margin-bottom:16px">&#127939;</div>
+        <div style="font-size:1.3rem;font-weight:700;margin-bottom:8px">Tocht gestart!</div>
         <p class="text-muted" style="font-size:.9rem;margin-bottom:24px">
-          Vertrek naar je eerste post.<br>Punten worden behaald onderweg.
+          Patrouille #${patrouille.nummer ?? '?'} mag nu vertrekken.
         </p>
-        <button class="btn btn-primary w-full" id="btn-volgende">
-          &#8594; Klaar, volgende patrouille
+
+        <div class="rally-start-tijden">
+          <div class="rally-start-tijdrij">
+            <span class="rally-info-label">&#128336; Starttijd</span>
+            <span class="rally-info-waarde">${startStr}</span>
+          </div>
+          ${eindStr ? `
+          <div class="rally-start-tijdrij accent">
+            <span class="rally-info-label">&#9201;&#65039; Eindtijd</span>
+            <span class="rally-info-waarde">${eindStr}</span>
+          </div>` : ''}
+        </div>
+
+        <button class="btn btn-primary w-full" style="margin-top:28px" id="btn-volgende">
+          &#8594; Volgende patrouille
         </button>
+
       </div>
     </div>
   `;
 
-  document.getElementById('btn-volgende').addEventListener('click', () => {
-    valideerEnToonWachten(stationToken);
+  document.getElementById('btn-volgende').addEventListener('click', async () => {
+    toonLaden();
+    try {
+      const sessieData = await apiGet('/api/rally/sessie');
+      toonStationLanding(sessieData);
+    } catch {
+      toonGeenSessie();
+    }
   });
 }
 
-// ── Scherm: score formulier ────────────────────────────────────────
+// ── View: foutpagina ────────────────────────────────────────────────
 
-function schermScoreFormulier(stationToken, scanData) {
-  const { patrouille, station, scoreFormData, bezoek_status } = scanData;
-  const isNieuw = bezoek_status === 'aangekomen';
+function toonFoutPagina(bericht, metTerugKnop = false) {
+  stopPolling();
+  root().innerHTML = `
+    <div class="rally-page">
+      <div class="rally-content">
+        <div class="alert alert-error" style="margin-top:24px">${esc(bericht)}</div>
+        ${metTerugKnop ? `
+          <button class="btn btn-ghost w-full" style="margin-top:12px" id="btn-naar-station">
+            &#8592; Terug naar station
+          </button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+  if (metTerugKnop) {
+    document.getElementById('btn-naar-station').addEventListener('click', async () => {
+      toonLaden();
+      try {
+        const data = await apiGet('/api/rally/sessie');
+        toonStationLanding(data);
+      } catch {
+        toonGeenSessie();
+      }
+    });
+  }
+}
+
+// ── View: station-landingspagina ────────────────────────────────────
+
+function toonStationLanding(data, highlight = null) {
+  stopPolling();
+  const { station, moment, categorie_naam, verlopen_op, patrouilles = [] } = data;
+
+  const verlopen = verlopen_op ? new Date(verlopen_op) : null;
 
   root().innerHTML = `
     <div class="rally-page">
 
-      <!-- Sticky header: station + patrouille nummer -->
+      <!-- Header balk -->
+      <div class="rally-station-bar">
+        <div class="rally-station-info">
+          <div class="rally-station-naam">${esc(station.naam)}</div>
+          <div class="rally-station-sub">${esc(categorie_naam || moment.naam || '—')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          ${verlopen ? `<div class="rally-sessie-badge" id="sessie-timer" title="Sessie verloopt om ${verlopen.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})}">&#128338; <span id="sessie-tijd"></span></div>` : ''}
+          <button class="btn btn-sm" id="btn-wissel-station"
+            style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">
+            &#8635; Wissel
+          </button>
+        </div>
+      </div>
+
+      <div class="rally-content">
+
+        <!-- Patrouilles op post -->
+        <div class="rally-sectie-header">
+          <span>&#128203; Patrouilles op post</span>
+          <span id="patrouille-count" class="rally-badge">${patrouilles.length}</span>
+        </div>
+        <div id="patrouilles-lijst">
+          ${bouwPatrouilleLijst(patrouilles, highlight)}
+        </div>
+
+        <!-- Instructie -->
+        <div class="rally-instructie">
+          <div class="rally-instructie-icon">&#128247;</div>
+          <p>Scan een patrouille-QR met je camera-app om ze bij dit station te registreren.</p>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  // Sessie-timer bijwerken
+  if (verlopen) {
+    function updateTimer() {
+      const el = document.getElementById('sessie-tijd');
+      if (!el) return;
+      const resterendSec = Math.max(0, Math.round((verlopen - Date.now()) / 1000));
+      const m = Math.floor(resterendSec / 60);
+      const s = resterendSec % 60;
+      el.textContent = `${m}:${String(s).padStart(2, '0')}`;
+      if (resterendSec === 0) {
+        stopPolling();
+        toonFoutPagina('Sessie verlopen — scan opnieuw een station-QR');
+      }
+    }
+    updateTimer();
+    setInterval(updateTimer, 1000);
+  }
+
+  // Klikken op patrouille uit de lijst
+  document.getElementById('patrouilles-lijst').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-patrouille-id]');
+    if (!btn) return;
+    const patId     = Number(btn.dataset.patrouilleId);
+    const bezoekId  = Number(btn.dataset.bezoekId);
+    await openPatrouilleVanuitLijst(patId, bezoekId);
+  });
+
+  // Wissel station
+  document.getElementById('btn-wissel-station').addEventListener('click', async () => {
+    await apiPost('/api/rally/sessie-verlaten', {}).catch(() => {});
+    toonGeenSessie();
+  });
+
+  // Polling elke 5 seconden
+  startPolling(moment.id, station.id, moment.editie_id);
+}
+
+function bouwPatrouilleLijst(patrouilles, highlight) {
+  if (!patrouilles.length) {
+    return `<p class="text-muted text-sm" style="padding:12px 0;text-align:center">
+      Nog geen patrouilles op post.
+    </p>`;
+  }
+  return patrouilles.map(p => `
+    <button class="rally-patrouille-rij ${highlight === p.patrouille_id ? 'highlight' : ''}"
+      data-patrouille-id="${p.patrouille_id}"
+      data-bezoek-id="${p.bezoek_id}">
+      <div class="rally-patrouille-rij-nummer">#${p.nummer ?? '?'}</div>
+      <div class="rally-patrouille-rij-info">
+        <div class="rally-patrouille-rij-naam">Patrouille ${p.nummer ?? p.patrouille_id}</div>
+        <div class="text-muted" style="font-size:.78rem">
+          Aankomst: ${tijdStr(p.aankomst_tijd)}
+        </div>
+      </div>
+      <div class="rally-patrouille-rij-pijl">&#8250;</div>
+    </button>
+  `).join('');
+}
+
+// ── Polling ─────────────────────────────────────────────────────────
+
+function startPolling() {
+  stopPolling();
+  pollingTimer = setInterval(async () => {
+    try {
+      const { patrouilles } = await apiGet('/api/rally/sessie-patrouilles');
+      const lijst = document.getElementById('patrouilles-lijst');
+      const count = document.getElementById('patrouille-count');
+      if (lijst) lijst.innerHTML = bouwPatrouilleLijst(patrouilles, null);
+      if (count) count.textContent = patrouilles.length;
+    } catch (e) {
+      if (e.status === 401) {
+        stopPolling();
+        toonFoutPagina('Sessie verlopen — scan opnieuw een station-QR');
+      }
+    }
+  }, 5000);
+}
+
+function stopPolling() {
+  if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+}
+
+// ── Patrouille openen vanuit de lijst ───────────────────────────────
+
+async function openPatrouilleVanuitLijst(patrouilleId, bezoekId) {
+  toonLaden('Patrouille ophalen…');
+  await toonFormulierVanuitSessie(patrouilleId, bezoekId);
+}
+
+// Formulier tonen voor een bestaande patrouille op post (vanuit de lijst)
+async function toonFormulierVanuitSessie(patrouilleId, bezoekId) {
+  try {
+    const data = await apiPost('/api/rally/bezoek-formulier', {
+      bezoek_id:     bezoekId,
+      patrouille_id: patrouilleId,
+    });
+    toonPatrouilleDetail(data);
+  } catch (e) {
+    toonFoutPagina(e.message, true);
+  }
+}
+
+// ── View: patrouille detail (scoreformulier) ─────────────────────────
+
+function toonPatrouilleDetail(scanData) {
+  stopPolling();
+  const { bezoek_id, patrouille, station, scoreFormData, al_aanwezig, aankomst_punten } = scanData;
+
+  root().innerHTML = `
+    <div class="rally-page">
+
+      <!-- Header: station + patrouille nummer -->
       <div class="rally-station-bar">
         <div class="rally-station-info">
           <div class="rally-station-naam">${esc(station.naam)}</div>
           <div class="rally-station-sub">${esc(station.categorie_naam || '—')}</div>
         </div>
-        <div class="rally-patrouille-badge">
-          <div class="rally-patrouille-nummer">#${patrouille.nummer ?? '?'}</div>
-          <div class="rally-patrouille-label">Patrouille</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <div class="rally-patrouille-badge">
+            <div class="rally-patrouille-nummer">#${patrouille.nummer ?? '?'}</div>
+            <div class="rally-patrouille-label">Patrouille</div>
+          </div>
+          <button class="btn btn-sm" id="btn-terug-naar-lijst"
+            style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">
+            &#8592; Lijst
+          </button>
         </div>
       </div>
 
       <form id="score-form">
         <div class="jury-cards" id="rally-score-cards">
 
-          ${!isNieuw ? `
+          ${al_aanwezig ? `
             <div class="alert alert-info" style="margin:0">
-              &#9888;&#65039; Al eerder gescand &mdash; scores worden bijgewerkt.
+              &#8505;&#65039; Al eerder gescand &mdash; scores worden bijgewerkt.
+            </div>
+          ` : ''}
+
+          ${aankomst_punten > 0 ? `
+            <div class="alert alert-success" style="margin:0">
+              &#127942; Aankomstpunten: <strong>${aankomst_punten}</strong>
             </div>
           ` : ''}
 
@@ -498,10 +408,13 @@ function schermScoreFormulier(stationToken, scanData) {
 
         </div>
 
-        <!-- Sticky actie balk -->
+        <!-- Actie knoppen -->
         <div class="rally-acties">
-          <button type="submit" class="btn btn-primary w-full" id="btn-opslaan">
+          <button type="button" class="btn btn-ghost" id="btn-opslaan" style="flex:1">
             &#128190; Opslaan
+          </button>
+          <button type="button" class="btn btn-primary" id="btn-vertrokken" style="flex:1">
+            &#128682; Vertrokken
           </button>
         </div>
       </form>
@@ -509,12 +422,12 @@ function schermScoreFormulier(stationToken, scanData) {
     </div>
   `;
 
-  // Accordeon voor subcategorie kaarten
+  // Accordeon
   document.querySelectorAll('#rally-score-cards .subcategorie-header').forEach(hdr => {
     hdr.addEventListener('click', () => hdr.closest('.subcategorie-card').classList.toggle('open'));
   });
 
-  // Binary knop toggle
+  // Binary knoppen (checkbox)
   document.querySelectorAll('#rally-score-cards .binary-knoppen').forEach(groep => {
     groep.querySelectorAll('.binary-knop').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -524,7 +437,7 @@ function schermScoreFormulier(stationToken, scanData) {
     });
   });
 
-  // Score switch toggle
+  // Score switches
   document.querySelectorAll('#rally-score-cards .score-switches').forEach(groep => {
     groep.querySelectorAll('.score-switch').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -534,7 +447,7 @@ function schermScoreFormulier(stationToken, scanData) {
     });
   });
 
-  // Counter knopen
+  // Counter knoppen
   document.querySelectorAll('#rally-score-cards .score-counter').forEach(counter => {
     counter.querySelectorAll('.counter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -551,24 +464,221 @@ function schermScoreFormulier(stationToken, scanData) {
     });
   });
 
-  document.getElementById('score-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    await slaScoresOp(stationToken, patrouille.id, scoreFormData);
+  document.getElementById('btn-terug-naar-lijst').addEventListener('click', async () => {
+    toonLaden();
+    try {
+      const data = await apiGet('/api/rally/sessie');
+      toonStationLanding(data);
+    } catch {
+      toonGeenSessie();
+    }
+  });
+
+  document.getElementById('btn-opslaan').addEventListener('click', async () => {
+    await slaScoresOp({ bezoek_id, patrouilleId: patrouille.id, scoreFormData, vertrekken: false });
+  });
+
+  document.getElementById('btn-vertrokken').addEventListener('click', async () => {
+    await slaScoresOp({ bezoek_id, patrouilleId: patrouille.id, scoreFormData, vertrekken: true });
   });
 }
+
+// ── Scores opslaan ───────────────────────────────────────────────────
+
+async function slaScoresOp({ bezoek_id, patrouilleId, scoreFormData, vertrekken }) {
+  const opslaanBtn   = document.getElementById('btn-opslaan');
+  const vertrekBtn   = document.getElementById('btn-vertrokken');
+  const foutEl       = document.getElementById('score-fout');
+
+  if (opslaanBtn)  opslaanBtn.disabled  = true;
+  if (vertrekBtn) vertrekBtn.disabled = true;
+  if (foutEl) foutEl.style.display = 'none';
+
+  const scores = verzamelScores(scoreFormData);
+
+  try {
+    if (vertrekken) {
+      await apiPost('/api/rally/patrouille-vertrek', {
+        bezoek_id,
+        patrouille_id: patrouilleId,
+        scores,
+      });
+      // Terug naar landing + highlight de patrouille even niet (is weg)
+      const data = await apiGet('/api/rally/sessie');
+      toonStationLanding(data);
+    } else {
+      await apiPost('/api/rally/sessie-score', {
+        patrouille_id: patrouilleId,
+        scores,
+      });
+      // Succesmelding tonen, knoppen re-enablen
+      if (foutEl) {
+        foutEl.className = 'alert alert-success';
+        foutEl.textContent = '\u2713 Opgeslagen';
+        foutEl.style.display = 'block';
+        setTimeout(() => { if (foutEl) foutEl.style.display = 'none'; }, 2000);
+      }
+    }
+  } catch (e) {
+    if (foutEl) {
+      foutEl.className = 'alert alert-error';
+      foutEl.textContent = e.message;
+      foutEl.style.display = 'block';
+    }
+  } finally {
+    if (opslaanBtn)  opslaanBtn.disabled  = false;
+    if (vertrekBtn) vertrekBtn.disabled = false;
+  }
+}
+
+function verzamelScores(scoreFormData) {
+  return (scoreFormData || []).map(veld => {
+    let score;
+
+    if (veld.invoer_type === 'checkbox') {
+      const actief = document.querySelector(`.binary-knop.actief[data-id="${veld.id}"]`);
+      if (!actief) return null;
+      score = Number(actief.dataset.waarde);
+
+    } else if (veld.invoer_type === 'tijdmeting') {
+      const inp = document.querySelector(`.score-input[data-id="${veld.id}"][data-invoer-type="tijdmeting"]`);
+      if (!inp) return null;
+      score = mmssNaarSecs(inp.value.trim());
+      if (score === null) return null;
+
+    } else {
+      const actief = document.querySelector(`.score-switch.actief[data-id="${veld.id}"]`);
+      if (actief) {
+        score = Number(actief.dataset.waarde);
+      } else {
+        const counter = document.querySelector(`.score-counter[data-id="${veld.id}"]`);
+        if (counter) {
+          score = Number(counter.querySelector('.counter-waarde').textContent);
+        } else {
+          const inp = document.querySelector(`.score-input[data-id="${veld.id}"]`);
+          if (!inp || inp.value === '') return null;
+          score = Number(inp.value);
+        }
+      }
+    }
+
+    if (score === null || score === undefined || isNaN(score)) return null;
+    return { criterium_id: veld.id, score };
+  }).filter(Boolean);
+}
+
+// ── View: patrouille-info (zelf-scan) ───────────────────────────────
+
+function toonPatrouilleInfo(info) {
+  stopPolling();
+  const {
+    patrouille, huidig_post, laatste_vertrek_post, volgende_post,
+    start_tijd, eind_tijd, tijd_resterend_sec, tijd_verstreken,
+  } = info;
+  const nummer = patrouille?.nummer ?? '?';
+
+  // Timer blok
+  let tijdBlok = '';
+  if (tijd_verstreken) {
+    tijdBlok = `<div class="alert alert-error" style="margin-top:16px">&#9203; Jullie tijd is verstreken.</div>`;
+  } else if (tijd_resterend_sec != null) {
+    const m = Math.floor(tijd_resterend_sec / 60);
+    const s = tijd_resterend_sec % 60;
+    const eindStr = eind_tijd
+      ? new Date(eind_tijd).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+      : null;
+    tijdBlok = `
+      <div class="rally-timer-blok">
+        <div class="rally-timer-label">Tijd resterend</div>
+        <div class="rally-timer-waarde" id="pat-timer">${m}:${String(s).padStart(2,'0')}</div>
+        ${eindStr ? `<div class="rally-timer-label" style="margin-top:4px">eindig om ${eindStr}</div>` : ''}
+      </div>
+    `;
+  }
+
+  // Status bericht
+  let statusBericht = '';
+  if (huidig_post) {
+    statusBericht = `<p class="text-muted" style="font-size:.9rem;margin-top:8px">Wacht op afmelding van de jury.</p>`;
+  } else if (volgende_post) {
+    statusBericht = `<p class="text-muted" style="font-size:.9rem;margin-top:8px">Ga naar de volgende post en wacht op de jury.</p>`;
+  } else if (laatste_vertrek_post) {
+    statusBericht = `<p class="text-muted" style="font-size:.9rem;margin-top:8px">Jullie tocht loopt nog.</p>`;
+  }
+
+  root().innerHTML = `
+    <div class="rally-page">
+      <div class="rally-content" style="padding:24px 16px;text-align:center">
+
+        <div class="rally-patrouille-badge" style="margin:0 auto 20px;display:inline-flex">
+          <div class="rally-patrouille-nummer">#${esc(String(nummer))}</div>
+          <div class="rally-patrouille-label">Patrouille</div>
+        </div>
+
+        ${huidig_post ? `
+          <div class="rally-info-rij">
+            <span class="rally-info-label">&#128205; Huidige post</span>
+            <span class="rally-info-waarde">${esc(huidig_post)}</span>
+          </div>
+        ` : ''}
+
+        ${laatste_vertrek_post && !huidig_post ? `
+          <div class="rally-info-rij">
+            <span class="rally-info-label">&#10003; Laatste post</span>
+            <span class="rally-info-waarde">${esc(laatste_vertrek_post)}</span>
+          </div>
+        ` : ''}
+
+        ${volgende_post ? `
+          <div class="rally-info-rij accent">
+            <span class="rally-info-label">&#8594; Volgende post</span>
+            <span class="rally-info-waarde">${esc(volgende_post)}</span>
+          </div>
+        ` : ''}
+
+        ${statusBericht}
+
+        ${tijdBlok}
+
+      </div>
+    </div>
+  `;
+
+  // Live countdown
+  if (tijd_resterend_sec != null && !tijd_verstreken) {
+    let sec = tijd_resterend_sec;
+    const timerInterval = setInterval(() => {
+      sec = Math.max(0, sec - 1);
+      const el = document.getElementById('pat-timer');
+      if (!el) { clearInterval(timerInterval); return; }
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      el.textContent = `${m}:${String(s).padStart(2,'0')}`;
+      if (sec === 0) {
+        clearInterval(timerInterval);
+        // Toon verlopen melding
+        const timerBlok = el.closest('.rally-timer-blok');
+        if (timerBlok) {
+          timerBlok.outerHTML = `<div class="alert alert-error" style="margin-top:16px">&#9203; Jullie tijd is verstreken.</div>`;
+        }
+      }
+    }, 1000);
+  }
+}
+
+// ── Score formulier bouwen ───────────────────────────────────────────
 
 function buildScoreVelden(scoreFormData) {
   if (!scoreFormData?.length) {
     return '<p class="text-muted" style="padding:16px;font-size:.85rem">Geen scoreformulier ingesteld voor dit station.</p>';
   }
 
-  // Groepeer criteria per subcategorie
   const groepen = [];
-  let huidigeSub = null;
+  let huidigeSub  = null;
   let huidigeLijst = null;
   for (const veld of scoreFormData) {
     if (veld.subcategorie !== huidigeSub) {
-      huidigeSub  = veld.subcategorie;
+      huidigeSub   = veld.subcategorie;
       huidigeLijst = [];
       groepen.push({ naam: huidigeSub, criteria: huidigeLijst });
     }
@@ -582,7 +692,7 @@ function buildScoreVelden(scoreFormData) {
         <span class="subcategorie-chevron">&#9660;</span>
       </div>
       <div class="subcategorie-inhoud">
-        ${groep.criteria.map(veld => buildCriteriumRij(veld)).join('')}
+        ${groep.criteria.map(buildCriteriumRij).join('')}
       </div>
     </div>
   `).join('');
@@ -632,7 +742,8 @@ function buildScoreWidget(veld, huidige) {
     const mmss = huidige !== '' ? secsNaarMmss(Number(huidige)) : '';
     return `
       <input class="score-input" type="text" data-id="${veld.id}" data-invoer-type="tijdmeting"
-        inputmode="numeric" value="${mmss}" placeholder="m:ss" style="width:72px;font-size:.95rem;letter-spacing:1px">
+        inputmode="numeric" value="${mmss}" placeholder="m:ss"
+        style="width:72px;font-size:.95rem;letter-spacing:1px">
     `;
   }
 
@@ -663,99 +774,47 @@ function buildScoreWidget(veld, huidige) {
   `;
 }
 
-async function slaScoresOp(stationToken, patrouilleId, scoreFormData) {
-  const btn    = document.getElementById('btn-opslaan');
-  const foutEl = document.getElementById('score-fout');
-  btn.disabled = true;
-  foutEl.style.display = 'none';
-
-  const scores = (scoreFormData || []).map(veld => {
-    let score;
-
-    if (veld.invoer_type === 'checkbox') {
-      const actief = document.querySelector(`.binary-knop.actief[data-id="${veld.id}"]`);
-      if (!actief) return null;
-      score = Number(actief.dataset.waarde);
-
-    } else if (veld.invoer_type === 'tijdmeting') {
-      const inp = document.querySelector(`.score-input[data-id="${veld.id}"][data-invoer-type="tijdmeting"]`);
-      if (!inp) return null;
-      score = mmssNaarSecs(inp.value.trim());
-      if (score === null) return null;
-
-    } else {
-      // Score switch (actieve knop)
-      const actief = document.querySelector(`.score-switch.actief[data-id="${veld.id}"]`);
-      if (actief) {
-        score = Number(actief.dataset.waarde);
-      } else {
-        // Counter
-        const counter = document.querySelector(`.score-counter[data-id="${veld.id}"]`);
-        if (counter) {
-          score = Number(counter.querySelector('.counter-waarde').textContent);
-        } else {
-          // Getal invoer
-          const inp = document.querySelector(`.score-input[data-id="${veld.id}"]`);
-          if (!inp || inp.value === '') return null;
-          score = Number(inp.value);
-        }
-      }
-    }
-
-    if (score === null || score === undefined || isNaN(score)) return null;
-    return { criterium_id: veld.id, score };
-  }).filter(Boolean);
-
-  try {
-    await apiPost('/api/rally/score', { station_token: stationToken, patrouille_id: patrouilleId, scores });
-    await valideerEnToonWachten(stationToken);
-  } catch (e) {
-    foutEl.textContent = e.message;
-    foutEl.style.display = 'block';
-    btn.disabled = false;
-  }
-}
-
-// ── API helpers ────────────────────────────────────────────────────
+// ── API helpers ──────────────────────────────────────────────────────
 
 async function apiGet(url) {
-  const res  = await fetch(BASE + url);
+  const res  = await fetch(BASE + url, { credentials: 'same-origin' });
   const json = await res.json().catch(() => ({ message: 'Serverfout' }));
-  if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(json.message || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   return json;
 }
 
 async function apiPost(url, body) {
   const res = await fetch(BASE + url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    method:      'POST',
+    headers:     { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body:        JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({ message: 'Serverfout' }));
-  if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(json.message || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   return json;
 }
 
-function extractToken(input, param) {
-  try {
-    const u = new URL(input.includes('://') ? input : `https://x.x${input.startsWith('/') ? '' : '/'}${input}`);
-    return u.searchParams.get(param) || null;
-  } catch { return null; }
-}
-
-function toonFout(id, msg) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (msg) { el.textContent = msg; el.style.display = 'block'; }
-  else      { el.style.display = 'none'; }
-}
+// ── Hulpfuncties ─────────────────────────────────────────────────────
 
 function esc(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/** "1:23" → 83 (seconds). Returns null if unparseable. */
+function tijdStr(dt) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+}
+
 function mmssNaarSecs(str) {
   if (!str) return null;
   const m = String(str).match(/^(\d+):([0-5]\d)$/);
@@ -763,19 +822,20 @@ function mmssNaarSecs(str) {
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
-/** 83 → "1:23" */
 function secsNaarMmss(secs) {
   if (secs == null || isNaN(secs)) return '';
   const s = Math.round(Math.abs(secs));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-// ── Start ──────────────────────────────────────────────────────────
+// ── Start ────────────────────────────────────────────────────────────
 init().catch(e => {
   root().innerHTML = `
     <div class="rally-page">
       <div class="rally-content">
-        <div class="alert alert-error">Fout bij laden: ${esc(e.message)}</div>
+        <div class="alert alert-error" style="margin-top:24px">
+          Fout bij laden: ${esc(e.message)}
+        </div>
       </div>
     </div>`;
 });
