@@ -148,7 +148,7 @@
 /* ── Dashboard grid ── */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 20px;
 }
 
@@ -347,7 +347,7 @@
 /* ── Snelle actie kaarten ── */
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
   gap: 12px;
 }
 
@@ -420,44 +420,10 @@
   font-size: 1.5rem;
 }
 
-.header-center {
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
 .header-right {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-/* ── Editie-switcher ── */
-.editie-switcher {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text);
-  transition: background var(--transition), border-color var(--transition);
-  user-select: none;
-}
-
-.editie-switcher:hover {
-  background: var(--color-surface-alt);
-  border-color: var(--color-primary);
-}
-
-.editie-dropdown {
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 220px;
 }
 
 .dropdown-item-active {
@@ -511,12 +477,43 @@
   text-transform: uppercase;
 }
 
+@media (max-width: 768px) {
+  .user-name,
+  .role-badge-header {
+    display: none;
+  }
+}
+
+/* Naam + rol bovenaan het dropdown */
+.dropdown-user-info {
+  padding: 10px 16px 8px;
+}
+
+.dropdown-user-naam {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.dropdown-user-rol {
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  display: inline-block;
+}
+
 /* ── Sidebar component ── */
 .sidebar-inner {
-  padding: 16px 0;
+  padding: 8px 0 16px;
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .sidebar-toggle {
@@ -528,26 +525,215 @@
   margin-bottom: 12px;
 }
 
+/* ── Editie-switcher in sidebar ── */
+.sidebar-editie-info-tekst {
+  padding: 8px 16px 10px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  border-top: 1px solid var(--color-border);
+}
+
+.sidebar-editie-info-tekst strong {
+  color: var(--color-text);
+}
+
+.sidebar-editie-optie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 20px;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition), color var(--transition);
+  border-left: 3px solid transparent;
+  gap: 8px;
+}
+
+.sidebar-editie-optie:hover {
+  color: var(--color-text);
+  background: var(--color-surface-alt);
+  border-left-color: var(--color-border);
+}
+
+.sidebar-editie-optie.actief {
+  color: var(--color-primary);
+  font-weight: 600;
+  border-left-color: var(--color-primary);
+}
+
+.sidebar-editie-laden {
+  display: block;
+  padding: 9px 20px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* ── Hoofd nav-groepen ── */
 .nav-group {
-  margin-bottom: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.nav-group:first-of-type {
+  border-top: none;
+}
+
+.nav-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px 10px 16px;
+  background: var(--color-bg);
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.nav-group-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.nav-group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.nav-group-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
 }
 
 .nav-group-label {
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-  padding: 8px 20px 4px;
+  letter-spacing: 0.07em;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
 }
 
+/* Uitklap-knop */
+.nav-group-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: transform var(--transition), background var(--transition), color var(--transition);
+}
+
+.nav-group-chevron svg {
+  display: block;
+}
+
+.nav-group-header:hover .nav-group-chevron,
+.nav-subgroup-header:hover .nav-group-chevron {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.nav-group-header.collapsed .nav-group-chevron,
+.nav-subgroup-header.collapsed .nav-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.nav-group-items {
+  overflow: hidden;
+  padding-bottom: 4px;
+}
+
+.nav-group-items.hidden {
+  display: none;
+}
+
+/* ── Sub-groepen (binnen Organisatie) ── */
+.nav-subgroup {
+  margin: 2px 8px 2px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.nav-subgroup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 10px 7px 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.nav-subgroup-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.nav-subgroup-header.collapsed {
+  border-bottom-color: transparent;
+}
+
+.nav-subgroup-header-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+}
+
+.nav-subgroup-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.nav-subgroup-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nav-subgroup-items {
+  overflow: hidden;
+}
+
+.nav-subgroup-items.hidden {
+  display: none;
+}
+
+/* Sub-groep nav-items: compact en ingesprongen */
+.nav-subgroup-items .nav-item {
+  padding: 7px 10px 7px 28px;
+  font-size: 0.85rem;
+  border-left-width: 2px;
+}
+
+/* ── Nav items (hoofd-niveau) ── */
 .nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 20px;
+  padding: 9px 20px;
   color: var(--color-text-muted);
   cursor: pointer;
   transition: all var(--transition);
@@ -560,20 +746,20 @@
 }
 
 .nav-item:hover {
-  color: var(--color-primary);
+  color: var(--color-text);
   background: var(--color-surface-alt);
   border-left-color: var(--color-border);
 }
 
 .nav-item.active {
   color: var(--color-primary);
-  background: rgba(30, 58, 95, 0.07);
-  border-left-color: var(--color-accent);
+  background: rgba(233, 69, 96, 0.08);
+  border-left-color: var(--color-primary);
   font-weight: 600;
 }
 
 .nav-item-icon {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   flex-shrink: 0;
   width: 20px;
   text-align: center;
@@ -584,14 +770,9 @@
   text-overflow: ellipsis;
 }
 
-#sidebar.collapsed .nav-group-label,
-#sidebar.collapsed .nav-item-label {
-  display: none;
-}
-
-#sidebar.collapsed .nav-item {
-  padding: 12px;
-  justify-content: center;
+/* ── Sidebar verborgen ── */
+#sidebar.collapsed {
+  overflow: hidden;
 }
 
 /* ── Hero sectie ── */
