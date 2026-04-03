@@ -6,13 +6,14 @@ import { getUser } from '../services/auth.js';
 import { laadSocketScript, maakSocket } from '../services/socket.js';
 import { laadPdfMake } from '../services/pdf.js';
 
-let socket       = null;
-let editieId     = null;
-let editie       = null;
-let refreshTimer = null;
-let isAdmin      = false;
-let isLeiding    = false;
-let huidigData   = null;
+let socket              = null;
+let editieId            = null;
+let editie              = null;
+let refreshTimer        = null;
+let isAdmin             = false;
+let isLeiding           = false;
+let huidigData          = null;
+let filterGepubliceerd  = false; // false = alle momenten, true = alleen gepubliceerd
 
 export async function render() {
   const user = getUser();
@@ -23,6 +24,12 @@ export async function render() {
     <div class="page-header">
       <div class="page-header-left"><h1>&#127942; Uitslagen</h1></div>
       <div style="display:flex;align-items:center;gap:10px">
+        ${isAdmin ? `
+        <select id="select-filter" class="form-control" style="width:auto;font-size:0.85rem">
+          <option value="alle">Alle momenten</option>
+          <option value="gepubliceerd">Alleen gepubliceerd</option>
+        </select>
+        ` : ''}
         ${isAdmin ? `<button id="btn-afdruk" class="btn btn-ghost" style="display:none">&#128438; Afdrukken</button>` : ''}
         ${isAdmin ? `
         <span id="live-dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-text-muted);display:inline-block"></span>
@@ -35,6 +42,10 @@ export async function render() {
 
   if (isAdmin) {
     document.getElementById('btn-afdruk')?.addEventListener('click', afdrukken);
+    document.getElementById('select-filter')?.addEventListener('change', e => {
+      filterGepubliceerd = e.target.value === 'gepubliceerd';
+      laadEnRender();
+    });
   }
 
   try {
@@ -51,7 +62,7 @@ export async function render() {
 async function laadEnRender() {
   try {
     const data = isAdmin && editieId
-      ? await get(`/admin/jury/uitslagen?editie_id=${editieId}`)
+      ? await get(`/admin/jury/uitslagen?editie_id=${editieId}&gepubliceerd=${filterGepubliceerd}`)
       : await get('/publiek/uitslagen/actief');
     huidigData = data;
     renderUitslagen(data);

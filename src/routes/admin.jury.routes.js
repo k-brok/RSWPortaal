@@ -208,12 +208,13 @@ router.get('/categorieen', beheer, async (req, res) => {
   }
 });
 
-// GET /uitslagen?editie_id=X — berekende uitslagen (admin preview)
+// GET /uitslagen?editie_id=X[&gepubliceerd=true] — berekende uitslagen (admin preview)
 router.get('/uitslagen', beheer, async (req, res) => {
   const editieId = Number(req.query.editie_id);
   if (!editieId) return res.status(400).json({ message: 'editie_id vereist' });
+  const gepubliceerdOnly = req.query.gepubliceerd === 'true';
   try {
-    res.json(await juryModel.berekenUitslagen(editieId));
+    res.json(await juryModel.berekenUitslagen(editieId, gepubliceerdOnly));
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

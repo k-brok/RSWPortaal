@@ -545,9 +545,9 @@ async function berekenUitslagen(editieId, gepubliceerdOnly = false) {
   // Sorteren op score desc (iedereen samen)
   resultaten.sort((a, b) => b.eindscore - a.eindscore);
 
-  // Posities 1 en 2 zijn voorbehouden aan de twee hoogst scorende niet-BM patrouilles (LSW-plaatsen).
-  // Alle overigen (BM + niet-BM vanaf #3) krijgen posities 3, 4, 5… op score-volgorde.
-  const lswKandidaten = resultaten.filter(r => !r.buiten_mededinging).slice(0, 2);
+  // Posities 1 en 2 zijn voorbehouden aan de twee hoogst scorende niet-BM, niet-jongste patrouilles (LSW-plaatsen).
+  // Alle overigen (BM + jongste + niet-BM vanaf #3) krijgen posities 3, 4, 5… op score-volgorde.
+  const lswKandidaten = resultaten.filter(r => !r.buiten_mededinging && !r.jongste).slice(0, 2);
   const lswIds = new Set(lswKandidaten.map(r => r.patrouille_id));
   lswKandidaten.forEach((r, i) => { r.positie = i + 1; });
 

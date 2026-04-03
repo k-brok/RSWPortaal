@@ -19,9 +19,9 @@ function berekenBmStatus(deelnemers, editie) {
   const n = deelnemers.length;
   const redenen = [];
 
-  if (n < editie.min_scouts)
+  if (editie.min_scouts != null && n < editie.min_scouts)
     redenen.push(`Minimaal ${editie.min_scouts} scouts vereist (nu ${n})`);
-  if (n > editie.max_scouts)
+  if (editie.max_scouts != null && n > editie.max_scouts)
     redenen.push(`Maximaal ${editie.max_scouts} scouts toegestaan (nu ${n})`);
 
   if (n > 0) {
@@ -36,10 +36,12 @@ function berekenBmStatus(deelnemers, editie) {
       if (oud) redenen.push(`${oud} deelnemer(s) te oud (max ${editie.max_leeftijd} jaar op LSW)`);
     }
 
-    const oudCount  = leeftijden.filter(l => l >= editie.ouderen_leeftijd).length;
-    const maxOud    = n >= editie.ouderen_grens ? editie.max_ouderen_groot : editie.max_ouderen_klein;
-    if (oudCount > maxOud)
-      redenen.push(`Teveel scouts van ${editie.ouderen_leeftijd}+ jaar (max ${maxOud} voor patrouille van ${n})`);
+    if (editie.ouderen_leeftijd != null) {
+      const oudCount = leeftijden.filter(l => l >= editie.ouderen_leeftijd).length;
+      const maxOud   = n >= editie.ouderen_grens ? editie.max_ouderen_groot : editie.max_ouderen_klein;
+      if (oudCount > maxOud)
+        redenen.push(`Teveel scouts van ${editie.ouderen_leeftijd}+ jaar (max ${maxOud} voor patrouille van ${n})`);
+    }
   }
 
   return { buiten: redenen.length > 0, reden: redenen.join('; ') || null };
