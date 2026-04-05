@@ -10,6 +10,9 @@ let groepen    = [];
 let zoekterm   = '';
 let rolFilter  = '';
 
+// Document-niveau click handler (voor sluiten dropdown bij klik buiten)
+let _docClickHandler = null;
+
 export async function render() {
   if (!hasRole('admin')) {
     document.getElementById('content').innerHTML = buildGeenToegang();
@@ -27,7 +30,6 @@ export async function render() {
 }
 
 export function onMount() {
-  // Modal callback: herlaad de lijst na opslaan
   window.__gebruikerOpgeslagen = async (bijgewerkt, isNieuw) => {
     if (isNieuw) gebruikers.push(bijgewerkt);
     else {
@@ -36,10 +38,18 @@ export function onMount() {
     }
     toonPagina();
   };
+
+  // Sluit open dropdowns bij klik buiten
+  _docClickHandler = () => sluitDropdowns();
+  document.addEventListener('click', _docClickHandler);
 }
 
 export function onDestroy() {
   delete window.__gebruikerOpgeslagen;
+  if (_docClickHandler) {
+    document.removeEventListener('click', _docClickHandler);
+    _docClickHandler = null;
+  }
 }
 
 // ── Pagina tonen / herrenderen ────────────────────────────────────
@@ -120,6 +130,10 @@ function buildTabel(lijst) {
     </div>`;
   }
 
+  const statusBadge = (g) => g.geverifieerd
+    ? '<span class="badge badge-success">&#10003; Geverifieerd</span>'
+    : '<span class="badge badge-warning">Niet geverifieerd</span>';
+
   const rijen = lijst.map(g => `
     <tr>
       <td>
@@ -128,20 +142,58 @@ function buildTabel(lijst) {
           <div class="user-cell-info">
             <div class="name">${escapeHtml(g.naam)}</div>
             <div class="email">${escapeHtml(g.email)}</div>
+            <span class="badge ${rolBadgeKleur(g.rol)} mob-rol-badge">${g.rol}</span>
           </div>
         </div>
       </td>
-      <td><span class="badge ${rolBadgeKleur(g.rol)}">${g.rol}</span></td>
-      <td class="muted">${g.groep ? escapeHtml(g.groep) : '—'}</td>
-      <td>
-        ${g.geverifieerd
-          ? '<span class="badge badge-success">&#10003; Geverifieerd</span>'
-          : '<span class="badge badge-warning">Niet geverifieerd</span>'}
+      <td class="col-mobile-hide"><span class="badge ${rolBadgeKleur(g.rol)}">${g.rol}</span></td>
+      <td class="col-tablet-hide muted">${g.groep ? escapeHtml(g.groep) : '—'}</td>
+      <td class="col-tablet-hide">${statusBadge(g)}</td>
+      <td style="text-align:right;">
+        <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;">
+          <button class="btn-icon uitklap-toggle" data-uitklap="${g.id}" title="Details tonen" aria-expanded="false">&#9660;</button>
+          <div class="actie-dropdown" data-id="${g.id}">
+            <button class="btn-icon actie-toggle" title="Acties" aria-label="Acties voor ${escapeHtml(g.naam)}">&#8942;</button>
+            <div class="actie-menu">
+              <button class="dropdown-item" data-actie="bewerken" data-id="${g.id}">
+                &#9998;&#xFE0E; Bewerken
+              </button>
+              ${g.geverifieerd ? `
+              <button class="dropdown-item" data-actie="wachtwoord-reset" data-id="${g.id}">
+                &#128273; Wachtwoord resetten
+              </button>
+              ` : `
+              <button class="dropdown-item" data-actie="uitnodigen" data-id="${g.id}">
+                &#9993;&#xFE0E; Uitnodiging opnieuw versturen
+              </button>
+              `}
+              <button class="dropdown-item" data-actie="sessies-beeindigen" data-id="${g.id}">
+                &#128274; Sessies be&#235;indigen
+              </button>
+              <hr class="dropdown-divider">
+              <button class="dropdown-item dropdown-item-danger" data-actie="verwijderen" data-id="${g.id}">
+                &#128465; Verwijderen
+              </button>
+            </div>
+          </div>
+        </div>
       </td>
-      <td>
-        <div class="table-actions">
-          <button class="btn-icon" title="Bewerken" data-actie="bewerken" data-id="${g.id}">&#9998;</button>
-          <button class="btn-icon" title="Verwijderen" data-actie="verwijderen" data-id="${g.id}" style="color:var(--color-error);">&#128465;</button>
+    </tr>
+    <tr class="uitklap-rij" id="uitklap-${g.id}">
+      <td colspan="5" style="padding:0;">
+        <div class="uitklap-content">
+          <div class="uitklap-item uitklap-alleen-mobiel">
+            <span class="uitklap-label">Rol</span>
+            <span class="badge ${rolBadgeKleur(g.rol)}">${g.rol}</span>
+          </div>
+          <div class="uitklap-item">
+            <span class="uitklap-label">Groep</span>
+            <span>${g.groep ? escapeHtml(g.groep) : '—'}</span>
+          </div>
+          <div class="uitklap-item">
+            <span class="uitklap-label">Status</span>
+            ${statusBadge(g)}
+          </div>
         </div>
       </td>
     </tr>
@@ -152,9 +204,9 @@ function buildTabel(lijst) {
       <thead>
         <tr>
           <th>Gebruiker</th>
-          <th>Rol</th>
-          <th>Groep</th>
-          <th>Status</th>
+          <th class="col-mobile-hide">Rol</th>
+          <th class="col-tablet-hide">Groep</th>
+          <th class="col-tablet-hide">Status</th>
           <th style="text-align:right;">Acties</th>
         </tr>
       </thead>
@@ -181,22 +233,82 @@ function bindEvents() {
   });
 
   document.querySelector('.data-table tbody')?.addEventListener('click', async (e) => {
-    const btn   = e.target.closest('[data-actie]');
+    // Uitklap-toggle
+    const uitklapKnop = e.target.closest('.uitklap-toggle');
+    if (uitklapKnop) {
+      const id  = uitklapKnop.dataset.uitklap;
+      const rij = document.getElementById(`uitklap-${id}`);
+      if (!rij) return;
+      const isOpen = rij.classList.toggle('open');
+      uitklapKnop.classList.toggle('open', isOpen);
+      uitklapKnop.setAttribute('aria-expanded', String(isOpen));
+      return;
+    }
+
+    // Toggle actie-dropdown
+    const toggle = e.target.closest('.actie-toggle');
+    if (toggle) {
+      e.stopPropagation(); // Voorkomt dat de document-listener hem direct weer sluit
+      const dropdown = toggle.closest('.actie-dropdown');
+      const wasOpen = dropdown.classList.contains('open');
+      sluitDropdowns();
+      if (!wasOpen) dropdown.classList.add('open');
+      return;
+    }
+
+    // Actie-knop in dropdown
+    const btn = e.target.closest('[data-actie]');
     if (!btn) return;
-    const id    = Number(btn.dataset.id);
-    const actie = btn.dataset.actie;
+
+    sluitDropdowns();
+
+    const id       = Number(btn.dataset.id);
+    const actie    = btn.dataset.actie;
+    const gebruiker = gebruikers.find(g => g.id === id);
 
     if (actie === 'bewerken') {
-      const gebruiker = gebruikers.find(g => g.id === id);
       openGebruikerModal(gebruiker, groepen);
     }
 
+    if (actie === 'wachtwoord-reset') {
+      if (!confirm(`Wachtwoord-reset e-mail sturen naar "${gebruiker?.naam}" (${gebruiker?.email})?\n\nDe link is 1 uur geldig.`)) return;
+      try {
+        const res = await api.post(`/admin/gebruikers/${id}/wachtwoord-reset`);
+        toonToast(res.message ?? 'Wachtwoord-reset verstuurd.', 'success');
+      } catch (err) {
+        toonToast(err.message || 'Verzenden mislukt.', 'error');
+      }
+    }
+
+    if (actie === 'uitnodigen') {
+      if (!confirm(`Activatie-uitnodiging opnieuw sturen naar "${gebruiker?.naam}" (${gebruiker?.email})?\n\nDe link is 7 dagen geldig en vervangt een eventuele eerdere link.`)) return;
+      try {
+        const res = await api.post(`/admin/gebruikers/${id}/uitnodigen`);
+        toonToast(res.message ?? 'Uitnodiging verstuurd.', 'success');
+      } catch (err) {
+        toonToast(err.message || 'Verzenden mislukt.', 'error');
+      }
+    }
+
+    if (actie === 'sessies-beeindigen') {
+      if (!confirm(`Alle actieve sessies van "${gebruiker?.naam}" beëindigen?\n\nDe gebruiker wordt direct uitgelogd op alle apparaten.`)) return;
+      try {
+        const res = await api.post(`/admin/gebruikers/${id}/sessies-beeindigen`);
+        toonToast(res.message ?? 'Sessies beëindigd.', 'success');
+      } catch (err) {
+        toonToast(err.message || 'Actie mislukt.', 'error');
+      }
+    }
+
     if (actie === 'verwijderen') {
-      const gebruiker = gebruikers.find(g => g.id === id);
-      if (confirm(`Gebruiker "${gebruiker?.naam}" verwijderen?`)) {
+      if (!confirm(`Gebruiker "${gebruiker?.naam}" definitief verwijderen?\n\nDeze actie kan niet ongedaan worden gemaakt.`)) return;
+      try {
         await api.delete(`/admin/gebruikers/${id}`);
         gebruikers = gebruikers.filter(g => g.id !== id);
         toonPagina();
+        toonToast(`${gebruiker?.naam} is verwijderd.`, 'success');
+      } catch (err) {
+        toonToast(err.message || 'Verwijderen mislukt.', 'error');
       }
     }
   });
@@ -206,6 +318,29 @@ function herlaadTabel() {
   const wrapper = document.querySelector('.table-wrapper');
   if (wrapper) wrapper.innerHTML = buildTabel(filterGebruikers());
   bindEvents();
+}
+
+// ── Dropdown helpers ──────────────────────────────────────────────
+
+function sluitDropdowns() {
+  document.querySelectorAll('.actie-dropdown.open').forEach(d => d.classList.remove('open'));
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+
+function toonToast(tekst, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = tekst;
+  document.body.appendChild(toast);
+  // Kleine timeout zodat de browser de initiële staat registreert voor de transitie
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add('toast-zichtbaar'));
+  });
+  setTimeout(() => {
+    toast.classList.remove('toast-zichtbaar');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  }, 3500);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────

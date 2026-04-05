@@ -70,11 +70,14 @@ router.put('/gebruikers/:id', adminOnly, async (req, res) => {
   }
 });
 
-// POST /api/admin/gebruikers/:id/uitnodigen — Stuur nieuwe activatielink
+// POST /api/admin/gebruikers/:id/uitnodigen — Stuur nieuwe activatielink (7 dagen geldig)
 router.post('/gebruikers/:id/uitnodigen', adminOnly, async (req, res) => {
   try {
     const gebruiker = await gebruikerModel.vindOpId(Number(req.params.id));
     if (!gebruiker) return res.status(404).json({ message: 'Niet gevonden' });
+    if (gebruiker.geverifieerd) {
+      return res.status(400).json({ message: 'Dit account is al geactiveerd.' });
+    }
 
     const token = authService.generateToken();
     const verloopt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -82,6 +85,35 @@ router.post('/gebruikers/:id/uitnodigen', adminOnly, async (req, res) => {
     await mailService.stuurUitnodigingsMail(gebruiker.email, gebruiker.naam, token);
 
     res.json({ message: `Uitnodiging verstuurd naar ${gebruiker.email}` });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// POST /api/admin/gebruikers/:id/wachtwoord-reset — Admin initieert wachtwoord-reset (1 uur geldig)
+router.post('/gebruikers/:id/wachtwoord-reset', adminOnly, async (req, res) => {
+  try {
+    const gebruiker = await gebruikerModel.vindOpId(Number(req.params.id));
+    if (!gebruiker) return res.status(404).json({ message: 'Niet gevonden' });
+    if (!gebruiker.geverifieerd) {
+      return res.status(400).json({ message: 'Account is nog niet geactiveerd. Gebruik "Uitnodiging opnieuw versturen".' });
+    }
+
+    const token = authService.generateToken();
+    const verloopt = new Date(Date.now() + 60 * 60 * 1000); // 1 uur
+    await gebruikerModel.resetTokenZetten(gebruiker.id, token, verloopt);
+    await mailService.stuurWachtwoordResetMail(gebruiker.email, gebruiker.naam, token);
+
+    res.json({ message: `Wachtwoord-reset verstuurd naar ${gebruiker.email}` });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// POST /api/admin/gebruikers/:id/sessies-beeindigen — Invalideert alle actieve sessies
+router.post('/gebruikers/:id/sessies-beeindigen', adminOnly, async (req, res) => {
+  try {
+    const gebruiker = await gebruikerModel.vindOpId(Number(req.params.id));
+    if (!gebruiker) return res.status(404).json({ message: 'Niet gevonden' });
+
+    await authService.verwijderAlleRefreshTokens(gebruiker.id);
+    res.json({ message: `Alle sessies van ${gebruiker.naam} zijn beëindigd.` });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
