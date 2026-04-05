@@ -62,7 +62,7 @@ function bouwPlaceholder(rol) {
     return `
       <div class="page-header">
         <div class="page-header-left">
-          <h1>&#127942; Mijn categorie</h1>
+          <h1><span class="material-icons">emoji_events</span> Mijn categorie</h1>
           <p>Overzicht van je toegewezen categorie en live scores</p>
         </div>
       </div>
@@ -79,13 +79,13 @@ function bouwPlaceholder(rol) {
   return `
     <div class="page-header">
       <div class="page-header-left">
-        <h1>&#128202; Scoreformulier</h1>
+        <h1><span class="material-icons">bar_chart</span> Scoreformulier</h1>
         <p>Scan de QR-code of open de link die je van de organisator hebt ontvangen</p>
       </div>
     </div>
     <div id="sf-root">
       <div class="card" style="padding:24px;text-align:center">
-        <div style="font-size:3rem;margin-bottom:16px">&#128247;</div>
+        <div style="font-size:3rem;margin-bottom:16px"><span class="material-icons" style="font-size:3rem">photo_camera</span></div>
         <h3>QR-code scannen</h3>
         <p class="text-muted">
           Scan de QR-code bij je subkamp of open de link die je van de organisator hebt ontvangen
@@ -149,7 +149,7 @@ async function verbindJurySocket(token) {
     const overlay = document.createElement('div');
     overlay.className = 'gesloten-overlay';
     overlay.innerHTML = `
-      <div class="gesloten-overlay-icon">&#128274;</div>
+      <div class="gesloten-overlay-icon"><span class="material-icons">lock</span></div>
       <div class="gesloten-overlay-titel">Jureermoment gesloten</div>
       <div class="gesloten-overlay-sub">De jureringsperiode is afgelopen. Bedankt!</div>`;
     document.body.appendChild(overlay);
@@ -247,7 +247,7 @@ function renderScoreKaarten(patrouilleId) {
     <div class="subcategorie-card ${openSubcategorieen.has(sub.id) ? 'open' : ''}" data-sub-id="${sub.id}">
       <div class="subcategorie-header">
         <span class="subcategorie-titel">${esc(sub.naam)}</span>
-        <span class="subcategorie-chevron">&#9660;</span>
+        <span class="subcategorie-chevron"><span class="material-icons">expand_more</span></span>
       </div>
       <div class="subcategorie-inhoud">
         ${(sub.criteria || []).map(cr => renderCriteriumRij(cr, patrouilleId)).join('')}
@@ -301,9 +301,9 @@ function renderCounter(cr, patrouilleId) {
   const huidige = getScore(patrouilleId, cr.id) ?? 0;
   return `
     <div class="score-counter" data-criterium="${cr.id}" data-patrouille="${patrouilleId}">
-      <button class="counter-btn" data-actie="min" ${huidige <= 0 ? 'disabled' : ''}>&#8722;</button>
+      <button class="counter-btn" data-actie="min" ${huidige <= 0 ? 'disabled' : ''}><span class="material-icons">remove</span></button>
       <span class="counter-waarde">${huidige}</span>
-      <button class="counter-btn" data-actie="plus" ${huidige >= cr.max_score ? 'disabled' : ''}>+</button>
+      <button class="counter-btn" data-actie="plus" ${huidige >= cr.max_score ? 'disabled' : ''}><span class="material-icons">add</span></button>
     </div>`;
 }
 
@@ -457,7 +457,7 @@ function vindCriterium(criteriumId) {
 
 function toonFoutHtml(titel, bericht) {
   return `<div class="card" style="padding:32px;text-align:center">
-    <div style="font-size:3rem;margin-bottom:8px">&#128683;</div>
+    <div style="font-size:3rem;margin-bottom:8px"><span class="material-icons" style="font-size:3rem">block</span></div>
     <h3>${esc(titel)}</h3>
     <p class="text-muted">${esc(bericht)}</p>
   </div>`;
@@ -465,7 +465,7 @@ function toonFoutHtml(titel, bericht) {
 
 function toonWachtenHtml() {
   return `<div class="card" style="padding:32px;text-align:center">
-    <div style="font-size:3rem;margin-bottom:8px">&#9200;</div>
+    <div style="font-size:3rem;margin-bottom:8px"><span class="material-icons" style="font-size:3rem">alarm</span></div>
     <h3>Jureermoment nog niet gestart</h3>
     <p class="text-muted">De jureringsperiode is nog niet begonnen. De pagina verbindt automatisch zodra het moment open gaat.</p>
   </div>`;

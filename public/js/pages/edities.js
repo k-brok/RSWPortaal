@@ -96,10 +96,10 @@ function buildKaart(e) {
       </div>
       <div class="card-body" style="padding-top:0">
         <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:.85rem;color:var(--color-text-muted);margin-bottom:12px">
-          <span>&#128197; RSW: <strong style="color:var(--color-text)">${rsw}</strong></span>
-          <span>&#127937; LSW: <strong style="color:var(--color-text)">${lsw}</strong></span>
-          <span>&#128205; ${escapeHtml(e.locatie ?? '—')}</span>
-          <span>&#128100; Max ${e.max_groepen} groepen</span>
+          <span><span class="material-icons" style="font-size:0.9rem">event</span> RSW: <strong style="color:var(--color-text)">${rsw}</strong></span>
+          <span><span class="material-icons" style="font-size:0.9rem">flag</span> LSW: <strong style="color:var(--color-text)">${lsw}</strong></span>
+          <span><span class="material-icons" style="font-size:0.9rem">location_on</span> ${escapeHtml(e.locatie ?? '—')}</span>
+          <span><span class="material-icons" style="font-size:0.9rem">person</span> Max ${e.max_groepen} groepen</span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <span style="font-size:.8rem;color:var(--color-text-muted)">Fase:</span>
@@ -181,11 +181,11 @@ function buildModals() {
            style="max-width:680px;max-height:90vh;overflow-y:auto">
         <div class="modal-header" style="position:sticky;top:0;background:var(--color-surface);z-index:1">
           <div class="modal-title" id="editie-modal-titel">Editie</div>
-          <button class="btn-icon" id="editie-modal-sluiten" aria-label="Sluiten">&#10005;</button>
+          <button class="btn-icon" id="editie-modal-sluiten" aria-label="Sluiten"><span class="material-icons">close</span></button>
         </div>
         <div class="modal-body">
           <div id="editie-modal-error" class="alert alert-error mb-16" style="display:none">
-            <span class="alert-icon">❌</span><span id="editie-modal-error-tekst"></span>
+            <span class="alert-icon"><span class="material-icons">error</span></span><span id="editie-modal-error-tekst"></span>
           </div>
           <form id="editie-form" novalidate>
             <fieldset style="border:1px solid var(--color-border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px">
@@ -311,7 +311,7 @@ function buildModals() {
         <div class="modal-body">
           <p id="editie-confirm-tekst"></p>
           <div id="editie-confirm-error" class="alert alert-error mt-16" style="display:none">
-            <span class="alert-icon">❌</span><span id="editie-confirm-error-tekst"></span>
+            <span class="alert-icon"><span class="material-icons">error</span></span><span id="editie-confirm-error-tekst"></span>
           </div>
         </div>
         <div class="modal-footer">

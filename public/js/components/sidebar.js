@@ -40,19 +40,15 @@ function buildSidebar() {
       <div class="nav-group" id="sidebar-editie-blok">
         <div class="nav-group-header" id="sidebar-editie-wissel-btn" role="button" tabindex="0" style="cursor:pointer;">
           <span class="nav-group-header-left">
-            <span class="nav-group-icon">&#128197;</span>
+            <span class="nav-group-icon"><span class="material-icons">event</span></span>
             <span class="nav-group-label">Editie: <span id="sidebar-editie-naam">${geselecteerd ? escapeHtml(geselecteerd.naam) : 'Laden\u2026'}</span></span>
           </span>
           <span style="display:flex;align-items:center;gap:6px;">
             <button class="nav-group-chevron" id="sidebar-editie-info-btn" title="Wat is de editie-selectie?" aria-label="Info over edities" style="width:24px;height:24px;">
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <circle cx="7" cy="7" r="6.5" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M7 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <circle cx="7" cy="4" r="0.75" fill="currentColor"/>
-              </svg>
+              <span class="material-icons" aria-hidden="true">info</span>
             </button>
             <span class="nav-group-chevron" id="sidebar-editie-chevron">
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="material-icons" aria-hidden="true">expand_more</span>
             </span>
           </span>
         </div>
@@ -69,79 +65,79 @@ function buildSidebar() {
   }
 
   // Algemeen — altijd zichtbaar
-  groups.push(navGroup('algemeen', '&#127758;', 'Algemeen', [
-    navItem('/', '&#127968;', 'Home'),
-    navItem('/programma', '&#128197;', 'Programma'),
-    navItem('/uitslagen', '&#127942;', 'Uitslagen'),
-    navItem('/over', '&#8505;&#65039;', 'Over de RSW'),
+  groups.push(navGroup('algemeen', 'public', 'Algemeen', [
+    navItem('/', 'home', 'Home'),
+    navItem('/programma', 'event', 'Programma'),
+    navItem('/uitslagen', 'emoji_events', 'Uitslagen'),
+    navItem('/over', 'info', 'Over de RSW'),
   ]));
 
   // Mijn deelname — leiding of vrijwilliger
   if (loggedIn && hasRole('leiding', 'vrijwilliger')) {
     const items = [];
     if (hasRole('leiding')) {
-      items.push(navItem('/inschrijvingen', '&#128221;', 'Inschrijving patrouilles'));
+      items.push(navItem('/inschrijvingen', 'assignment', 'Inschrijving patrouilles'));
     }
     if (hasRole('vrijwilliger')) {
-      items.push(navItem('/vrijwilliger/inschrijving', '&#128170;', 'Mijn inschrijving'));
+      items.push(navItem('/vrijwilliger/inschrijving', 'volunteer_activism', 'Mijn inschrijving'));
     }
-    items.push(navItem('/catering', '&#127859;', 'Catering'));
-    groups.push(navGroup('deelname', '&#128221;', 'Mijn deelname', items));
+    items.push(navItem('/catering', 'restaurant', 'Catering'));
+    groups.push(navGroup('deelname', 'assignment', 'Mijn deelname', items));
   }
 
   // Jury & Scores — jury of spelbegeleider
   if (loggedIn && hasRole('jury', 'spelbegeleider')) {
     const items = [];
     if (hasRole('jury')) {
-      items.push(navItem('/scoreformulier', '&#128394;&#65039;', 'Scoreformulier'));
+      items.push(navItem('/scoreformulier', 'rate_review', 'Scoreformulier'));
     }
     if (hasRole('spelbegeleider')) {
-      items.push(navItem('/scoreformulier', '&#128101;', 'Mijn categorie'));
+      items.push(navItem('/scoreformulier', 'groups', 'Mijn categorie'));
     }
-    items.push(navItem('/scores', '&#128200;', hasRole('spelbegeleider') ? 'Live scoretabel' : 'Live scores'));
-    groups.push(navGroup('jury', '&#9999;&#65039;', 'Jury & Scores', items));
+    items.push(navItem('/scores', 'leaderboard', hasRole('spelbegeleider') ? 'Live scoretabel' : 'Live scores'));
+    groups.push(navGroup('jury', 'edit_note', 'Jury & Scores', items));
   }
 
   // Organisatie — organisator of admin
   if (loggedIn && hasRole('organisator', 'admin')) {
-    groups.push(navGroup('organisatie', '&#9881;&#65039;', 'Organisatie', [
-      navSubGroup('org-inschrijvingen', '&#128203;', 'Inschrijvingen', [
-        navItem('/edities', '&#127937;', 'Edities'),
-        navItem('/inschrijvingen', '&#128221;', 'Inschrijvingen'),
-        navItem('/organisator/aanvragen', '&#128203;', 'Aanvragen'),
-        navItem('/organisator/vrijwilligers', '&#128170;', 'Vrijwilligers'),
+    groups.push(navGroup('organisatie', 'settings', 'Organisatie', [
+      navSubGroup('org-inschrijvingen', 'content_paste', 'Inschrijvingen', [
+        navItem('/edities', 'flag', 'Edities'),
+        navItem('/inschrijvingen', 'assignment', 'Inschrijvingen'),
+        navItem('/organisator/aanvragen', 'inbox', 'Aanvragen'),
+        navItem('/organisator/vrijwilligers', 'volunteer_activism', 'Vrijwilligers'),
       ]),
-      navSubGroup('org-locatie', '&#128205;', 'Locatie', [
-        navItem('/organisator/subkampen', '&#127979;', 'Subkampen'),
-        navItem('/organisator/plattegrond', '&#128205;', 'Plattegrond'),
+      navSubGroup('org-locatie', 'location_on', 'Locatie', [
+        navItem('/organisator/subkampen', 'holiday_village', 'Subkampen'),
+        navItem('/organisator/plattegrond', 'map', 'Plattegrond'),
       ]),
-      navSubGroup('org-wedstrijd', '&#127381;', 'Wedstrijd', [
-        navItem('/organisator/categorieen', '&#127381;', 'Categorieën'),
-        navItem('/organisator/programma', '&#128197;', 'Programma'),
-        navItem('/organisator/jury', '&#128203;', 'Jury-indeling'),
-        navItem('/scores', '&#128200;', 'Scorebeheer'),
+      navSubGroup('org-wedstrijd', 'category', 'Wedstrijd', [
+        navItem('/organisator/categorieen', 'category', 'Categorieën'),
+        navItem('/organisator/programma', 'event', 'Programma'),
+        navItem('/organisator/jury', 'content_paste', 'Jury-indeling'),
+        navItem('/scores', 'leaderboard', 'Scorebeheer'),
       ]),
-      navSubGroup('org-rally', '&#128690;', 'Rally', [
-        navItem('/organisator/rally-beheer', '&#128204;', 'Rally beheer'),
-        navItem('/organisator/rally-tracking', '&#128200;', 'Rally tracking'),
-        navItem('/organisator/catering', '&#127859;', 'Catering'),
+      navSubGroup('org-rally', 'directions_bike', 'Rally', [
+        navItem('/organisator/rally-beheer', 'push_pin', 'Rally beheer'),
+        navItem('/organisator/rally-tracking', 'leaderboard', 'Rally tracking'),
+        navItem('/organisator/catering', 'restaurant', 'Catering'),
       ]),
     ]));
   }
 
   // Beheer — admin only
   if (loggedIn && hasRole('admin')) {
-    groups.push(navGroup('beheer', '&#128295;', 'Beheer', [
-      navItem('/admin/gebruikers', '&#128100;', 'Gebruikers'),
-      navItem('/admin/verenigingen', '&#127960;&#65039;', 'Verenigingen'),
-      navItem('/admin/versie', '&#128260;', 'Versie & Updates'),
+    groups.push(navGroup('beheer', 'build', 'Beheer', [
+      navItem('/admin/gebruikers', 'person', 'Gebruikers'),
+      navItem('/admin/verenigingen', 'location_city', 'Verenigingen'),
+      navItem('/admin/versie', 'update', 'Versie & Updates'),
     ]));
   }
 
   // Account — altijd als ingelogd
   if (loggedIn) {
-    groups.push(navGroup('account', '&#128100;', 'Account', [
-      navItem('/profiel', '&#128100;', 'Mijn profiel'),
+    groups.push(navGroup('account', 'account_circle', 'Account', [
+      navItem('/profiel', 'manage_accounts', 'Mijn profiel'),
     ]));
   }
 
@@ -151,7 +147,7 @@ function buildSidebar() {
 function navItem(route, icon, label) {
   return `
     <a href="#${route}" class="nav-item" data-route="${route}">
-      <span class="nav-item-icon">${icon}</span>
+      <span class="nav-item-icon"><span class="material-icons">${icon}</span></span>
       <span class="nav-item-label">${label}</span>
     </a>
   `;
@@ -165,10 +161,10 @@ function navGroup(id, icon, label, children) {
     <div class="nav-group" data-group-id="${id}">
       <button class="nav-group-header ${isCollapsed ? 'collapsed' : ''}" aria-expanded="${!isCollapsed}">
         <span class="nav-group-header-left">
-          <span class="nav-group-icon">${icon}</span>
+          <span class="nav-group-icon"><span class="material-icons">${icon}</span></span>
           <span class="nav-group-label">${label}</span>
         </span>
-        <span class="nav-group-chevron"><svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="nav-group-chevron"><span class="material-icons" aria-hidden="true">expand_more</span></span>
       </button>
       <div class="nav-group-items ${isCollapsed ? 'hidden' : ''}">
         ${Array.isArray(children) ? children.join('') : children}
@@ -184,10 +180,10 @@ function navSubGroup(id, icon, label, items) {
     <div class="nav-subgroup" data-group-id="${id}">
       <button class="nav-subgroup-header ${isCollapsed ? 'collapsed' : ''}" aria-expanded="${!isCollapsed}">
         <span class="nav-subgroup-header-left">
-          <span class="nav-subgroup-icon">${icon}</span>
+          <span class="nav-subgroup-icon"><span class="material-icons">${icon}</span></span>
           <span class="nav-subgroup-label">${label}</span>
         </span>
-        <span class="nav-group-chevron"><svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="nav-group-chevron"><span class="material-icons" aria-hidden="true">expand_more</span></span>
       </button>
       <div class="nav-subgroup-items ${isCollapsed ? 'hidden' : ''}">
         ${items.join('')}

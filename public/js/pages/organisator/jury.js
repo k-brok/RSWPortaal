@@ -14,7 +14,7 @@ export async function render() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
       <div class="page-header-left">
-        <h1>&#9201; Jurymomenten</h1>
+        <h1><span class="material-icons">timer</span> Jurymomenten</h1>
       </div>
       <button class="btn btn-primary" id="btn-nieuw-moment">+ Nieuw moment</button>
     </div>
@@ -27,7 +27,7 @@ export async function render() {
         <div class="modal-header">
           <h2 id="modal-titel">Jureermoment</h2>
           <button type="button" id="modal-sluiten"
-            style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer;line-height:1">&#10005;</button>
+            style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer;line-height:1"><span class="material-icons">close</span></button>
         </div>
         <form id="moment-form">
           <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
@@ -136,7 +136,7 @@ function renderMomentKaart(m) {
   const publLabel    = m.gepubliceerd   ? 'Depubliceer' : 'Publiceer';
   const modusLabel   = m.jureer_modus === 'binair' ? 'Binair' : 'Numeriek';
   const rallyBadge   = m.rally_modus
-    ? `<span class="badge badge-info" style="font-size:.7rem">&#128204; Rally</span>` : '';
+    ? `<span class="badge badge-info" style="font-size:.7rem"><span class="material-icons" style="font-size:.7rem">push_pin</span> Rally</span>` : '';
 
   return `
   <div class="card" style="padding:0;overflow:hidden" data-id="${m.id}">
@@ -156,9 +156,9 @@ function renderMomentKaart(m) {
         <button class="btn btn-sm btn-secondary" data-actie="bewerk">Bewerk</button>
         <button class="btn btn-sm btn-ghost" data-actie="verwijder"
           style="color:var(--color-error);border-color:var(--color-error)">Verwijder</button>
-        <button class="btn btn-sm btn-secondary" data-actie="print-alle">&#128438; Alle formulieren</button>
+        <button class="btn btn-sm btn-secondary" data-actie="print-alle"><span class="material-icons">print</span> Alle formulieren</button>
         <button class="btn btn-sm btn-secondary qr-toggle-btn" data-actie="qr-toggle">
-          QR-codes &#9660;
+          QR-codes <span class="material-icons">expand_more</span>
         </button>
       </div>
     </div>
@@ -205,12 +205,12 @@ async function toggleQrSectie(id, m) {
 
   if (open) {
     sectie.style.display = 'none';
-    btn.innerHTML = 'QR-codes &#9660;';
+    btn.innerHTML = 'QR-codes <span class="material-icons">expand_more</span>';
     return;
   }
 
   sectie.style.display = 'block';
-  btn.innerHTML = 'QR-codes &#9650;';
+  btn.innerHTML = 'QR-codes <span class="material-icons">expand_less</span>';
 
   // Alleen laden als nog niet gecached
   if (!qrCache.has(id)) {
@@ -337,7 +337,7 @@ function renderQrTegel(t) {
           style="display:block;font-size:0.75rem;padding:5px 8px;border:1px solid var(--color-border);
             border-radius:var(--radius-sm);color:var(--color-primary);text-decoration:none;
             background:var(--color-surface);font-weight:600">
-          &#128279; Openen
+          <span class="material-icons" style="font-size:0.75rem">link</span> Openen
         </a>
         <button class="btn-print-formulier" data-moment-id="${t.momentId ?? ''}"
           data-subkamp-id="${t.subkamp_id}" data-qr="${escapeHtml(t.qr_dataurl)}"
@@ -346,7 +346,7 @@ function renderQrTegel(t) {
             border:1px solid var(--color-border);border-radius:var(--radius-sm);
             background:var(--color-surface);cursor:pointer;font-family:inherit;
             color:var(--color-text);font-weight:600">
-          &#128438; Scoreformulier
+          <span class="material-icons" style="font-size:0.75rem">print</span> Scoreformulier
         </button>
         <button class="btn-scores-invoer" data-moment-id="${t.momentId ?? ''}"
           data-subkamp-id="${t.subkamp_id}"
@@ -354,7 +354,7 @@ function renderQrTegel(t) {
             border:1px solid var(--color-border);border-radius:var(--radius-sm);
             background:var(--color-surface);cursor:pointer;font-family:inherit;
             color:var(--color-text);font-weight:600">
-          &#128200; Scores invoeren
+          <span class="material-icons" style="font-size:0.75rem">leaderboard</span> Scores invoeren
         </button>
       </div>
     </div>`;

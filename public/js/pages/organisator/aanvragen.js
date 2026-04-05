@@ -53,7 +53,7 @@ function renderPagina() {
     el.innerHTML = `
       <div class="card">
         <div class="card-body text-center" style="padding:2rem;">
-          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;">&#9989;</div>
+          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;"><span class="material-icons" style="font-size:2rem">check_circle</span></div>
           <p class="text-muted">Geen openstaande aanvragen.</p>
         </div>
       </div>
@@ -71,7 +71,7 @@ function renderPagina() {
       : (item.vacature_naam ? `<span class="badge badge-info">${esc(item.vacature_naam)}</span>` : item.taakvorkeur ? esc(item.taakvorkeur) : '—');
 
     const opmerking = item.opmerking
-      ? `<span title="${esc(item.opmerking)}" style="cursor:help;">&#128196; ${esc(item.opmerking.slice(0, 35))}${item.opmerking.length > 35 ? '…' : ''}</span>`
+      ? `<span title="${esc(item.opmerking)}" style="cursor:help;"><span class="material-icons" style="font-size:0.9rem">description</span> ${esc(item.opmerking.slice(0, 35))}${item.opmerking.length > 35 ? '…' : ''}</span>`
       : '—';
 
     const goedkeurLabel  = item._type === 'leiding' ? 'Goedkeuren' : 'Bevestigen';
@@ -95,12 +95,12 @@ function renderPagina() {
               data-id="${item.id}" data-type="${item._type}"
               data-naam="${esc(item.gebruiker_naam)}"
               data-detail="${item._type === 'leiding' ? esc(item.groep_label) : ''}">
-              &#10003; ${goedkeurLabel}
+              <span class="material-icons">check</span> ${goedkeurLabel}
             </button>
             <button class="btn btn-ghost btn-sm btn-danger btn-afwijzen"
               data-id="${item.id}" data-type="${item._type}"
               data-naam="${esc(item.gebruiker_naam)}">
-              &#10007; Afwijzen
+              <span class="material-icons">close</span> Afwijzen
             </button>
           </div>
         </td>
@@ -111,7 +111,7 @@ function renderPagina() {
   el.innerHTML = `
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title">&#128203; Openstaande aanvragen</h2>
+        <h2 class="card-title"><span class="material-icons">content_paste</span> Openstaande aanvragen</h2>
         <span class="badge badge-warning">${totaal} in behandeling</span>
       </div>
       <div class="card-body" style="padding:0;overflow-x:auto;">
@@ -185,7 +185,7 @@ function openAfwijsModal(type, id, naam) {
       <div class="modal" style="max-width:440px;">
         <div class="modal-header">
           <h3>Aanvraag afwijzen</h3>
-          <button class="btn-icon" id="afwijs-sluiten">&#10005;</button>
+          <button class="btn-icon" id="afwijs-sluiten"><span class="material-icons">close</span></button>
         </div>
         <div class="modal-body">
           <p>Je wijst de aanvraag van <strong>${esc(naam)}</strong> af.</p>

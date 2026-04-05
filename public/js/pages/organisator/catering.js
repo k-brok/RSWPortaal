@@ -11,7 +11,7 @@ let cateringData = null; // { editie, aanvragen, totalen }
 export async function render() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
-      <h1 class="page-title">&#127859; Catering overzicht</h1>
+      <h1 class="page-title"><span class="material-icons">restaurant</span> Catering overzicht</h1>
     </div>
     <div id="catering-org-inhoud">
       <div class="loading-spinner"></div>
@@ -48,7 +48,7 @@ function renderPagina() {
     el.innerHTML = `
       <div class="card">
         <div class="card-body text-center" style="padding:2rem;">
-          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;">&#127859;</div>
+          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;"><span class="material-icons">restaurant</span></div>
           <p class="text-muted">Geen actieve editie gevonden.</p>
         </div>
       </div>
@@ -166,7 +166,7 @@ function buildAanvragenTabel(aanvragen, editie) {
     return `
       <div class="card">
         <div class="card-body text-center" style="padding:2rem;">
-          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;">&#127859;</div>
+          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;"><span class="material-icons">restaurant</span></div>
           <p class="text-muted">Nog niemand aangemeld voor catering voor <strong>${esc(editie.naam)}</strong>.</p>
         </div>
       </div>
@@ -205,7 +205,7 @@ function buildAanvragenTabel(aanvragen, editie) {
   return `
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title">&#127859; Aanmeldingen — ${esc(editie.naam)}</h2>
+        <h2 class="card-title"><span class="material-icons">restaurant</span> Aanmeldingen — ${esc(editie.naam)}</h2>
         <span class="text-muted text-sm">${aanvragen.length} aanmelding${aanvragen.length !== 1 ? 'en' : ''}</span>
       </div>
       <div class="card-body" style="padding:0;overflow-x:auto;">

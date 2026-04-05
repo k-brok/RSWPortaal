@@ -12,7 +12,7 @@ let statusData = null; // { editie, aanvraag }
 export async function render() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
-      <h1 class="page-title">&#127859; Catering aanmelden</h1>
+      <h1 class="page-title"><span class="material-icons">restaurant</span> Catering aanmelden</h1>
     </div>
     <div id="catering-inhoud">
       <div class="loading-spinner"></div>
@@ -47,7 +47,7 @@ function renderPagina() {
     inhoud.innerHTML = `
       <div class="card">
         <div class="card-body text-center" style="padding:2rem;">
-          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;">&#127859;</div>
+          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;"><span class="material-icons">restaurant</span></div>
           <p class="text-muted">Er is momenteel geen actieve editie.</p>
         </div>
       </div>
@@ -59,7 +59,7 @@ function renderPagina() {
     inhoud.innerHTML = `
       <div class="card">
         <div class="card-body text-center" style="padding:2rem;">
-          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;">&#127859;</div>
+          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;"><span class="material-icons">restaurant</span></div>
           <p class="text-muted">Catering aanmelden is momenteel niet beschikbaar voor <strong>${esc(editie.naam)}</strong>.</p>
           <p class="text-muted text-sm">Neem contact op met de organisatie voor meer informatie.</p>
         </div>
@@ -92,13 +92,13 @@ function buildAanvraagKaart(editie, aanvraag, prijsPerPersoon) {
   return `
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title">&#127859; Catering aanmelding — ${esc(editie.naam)}</h2>
+        <h2 class="card-title"><span class="material-icons">restaurant</span> Catering aanmelding — ${esc(editie.naam)}</h2>
         <span class="badge badge-success">Aangemeld</span>
       </div>
       <div class="card-body">
         ${prijsPerPersoon !== null && prijsPerPersoon !== undefined ? `
           <div class="alert alert-info" style="margin-bottom:1.25rem;">
-            <span class="alert-icon">&#8364;</span>
+            <span class="alert-icon"><span class="material-icons">euro</span></span>
             <span>Prijs per persoon: <strong>&euro;&nbsp;${Number(prijsPerPersoon).toFixed(2)}</strong></span>
           </div>
         ` : ''}
@@ -136,18 +136,18 @@ function buildAanmeldenView(editie, prijsPerPersoon) {
   return `
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title">&#127859; Aanmelden voor catering</h2>
+        <h2 class="card-title"><span class="material-icons">restaurant</span> Aanmelden voor catering</h2>
         <span class="badge badge-info">${esc(editie.naam)}</span>
       </div>
       <div class="card-body">
         ${heeftPrijs ? `
           <div class="alert alert-info" style="margin-bottom:1.25rem;">
-            <span class="alert-icon">&#8364;</span>
+            <span class="alert-icon"><span class="material-icons">euro</span></span>
             <span>Prijs per persoon (${rolLabel}): <strong>&euro;&nbsp;${Number(prijsPerPersoon).toFixed(2)}</strong></span>
           </div>
         ` : `
           <div class="alert alert-info" style="margin-bottom:1.25rem;">
-            <span class="alert-icon">&#8505;</span>
+            <span class="alert-icon"><span class="material-icons">info</span></span>
             <span>Meld je aan voor catering tijdens <strong>${esc(editie.naam)}</strong>. De organisatie neemt contact op over de betaling.</span>
           </div>
         `}

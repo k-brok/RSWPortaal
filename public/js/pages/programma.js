@@ -7,7 +7,7 @@ import { formatTijd } from '../utils/datum.js';
 export async function render() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
-      <div class="page-header-left"><h1>&#128197; Programma</h1></div>
+      <div class="page-header-left"><h1><span class="material-icons">event</span> Programma</h1></div>
     </div>
     <div id="programma-inhoud"><p class="text-muted">Laden…</p></div>
   `;
@@ -55,7 +55,7 @@ function renderVooraf(items) {
   const rijen = items.map(item => `
     <div style="display:flex;justify-content:space-between;align-items:center;
       padding:11px 16px;border-bottom:1px solid var(--color-border)">
-      <span style="font-weight:600;font-size:0.9rem">&#128221; ${esc(item.naam)}</span>
+      <span style="font-weight:600;font-size:0.9rem"><span class="material-icons" style="font-size:0.9rem">assignment</span> ${esc(item.naam)}</span>
       <span style="font-size:0.83rem;color:var(--color-text-muted);white-space:nowrap">
         ${datumBereik(item.start_tijd, item.eind_tijd)}
       </span>
@@ -128,7 +128,7 @@ function renderRij(item, idx, total) {
             ${esc(tijdStr)}${eindStr ? ` – ${esc(eindStr)}` : ''}
           </span>
           ${isJury ? `<span style="font-size:0.72rem;padding:1px 6px;border-radius:10px;
-            background:var(--color-surface-alt);color:var(--color-text-muted)">&#9203; Jurering</span>` : ''}
+            background:var(--color-surface-alt);color:var(--color-text-muted)"><span class="material-icons" style="font-size:0.72rem">hourglass_empty</span> Jurering</span>` : ''}
         </div>
         <div style="font-weight:600;font-size:0.95rem;margin-top:2px">${esc(item.naam)}</div>
         ${item.omschrijving

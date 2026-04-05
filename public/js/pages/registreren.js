@@ -31,7 +31,7 @@ export async function render() {
           </div>
 
           <div id="reg-alert" class="alert alert-info" style="display:none">
-            <span class="alert-icon">ℹ️</span>
+            <span class="alert-icon"><span class="material-icons">info</span></span>
             <span id="reg-alert-tekst"></span>
           </div>
 
@@ -64,19 +64,19 @@ function renderFormulier(rol) {
       <!-- Rolkeuze tabs -->
       <div class="tabs mb-24" style="margin-bottom:1.5rem;">
         <button type="button" class="tab-btn ${rol === 'leiding' ? 'active' : ''}" data-rol="leiding">
-          &#128203; Ik ben leiding
+          <span class="material-icons">content_paste</span> Ik ben leiding
         </button>
         <button type="button" class="tab-btn ${rol === 'vrijwilliger' ? 'active' : ''}" data-rol="vrijwilliger">
-          &#128170; Ik word vrijwilliger
+          <span class="material-icons">volunteer_activism</span> Ik word vrijwilliger
         </button>
         <button type="button" class="tab-btn ${rol === 'overig' ? 'active' : ''}" data-rol="overig">
-          &#128100; Overig
+          <span class="material-icons">person</span> Overig
         </button>
       </div>
 
       <!-- Rol-toelichting -->
       <div id="rol-toelichting" class="alert alert-info" style="margin-bottom:1.25rem;display:flex;">
-        <span class="alert-icon">ℹ️</span>
+        <span class="alert-icon"><span class="material-icons">info</span></span>
         <span id="rol-toelichting-tekst">${rolToelichting(rol)}</span>
       </div>
 
@@ -182,7 +182,7 @@ function buildRolSpecifiek(rol) {
               <div class="text-sm" style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;">
                 ${vol ? '<span class="badge badge-error">Vol</span>' : '<span class="badge badge-success">Open</span>'}
                 ${nog !== null && nog > 0 ? `<span class="badge badge-warning">Nog ${nog} benodigd!</span>` : ''}
-                ${max ? `<span class="text-muted">&#128101; ${bezet}/${max}</span>` : ''}
+                ${max ? `<span class="text-muted"><span class="material-icons" style="font-size:0.9rem">groups</span> ${bezet}/${max}</span>` : ''}
               </div>
             </div>
           </div>

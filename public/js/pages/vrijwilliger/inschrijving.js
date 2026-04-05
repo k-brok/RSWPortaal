@@ -51,7 +51,7 @@ function renderPagina() {
     inhoud.innerHTML = `
       <div class="card">
         <div class="card-body text-center" style="padding:2rem;">
-          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;">&#128197;</div>
+          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;"><span class="material-icons" style="font-size:2rem">event</span></div>
           <p class="text-muted">Er is momenteel geen actieve editie waarvoor je je kunt aanmelden.</p>
         </div>
       </div>
@@ -88,7 +88,7 @@ function buildInschrijvingKaart(editie, inschrijving) {
   return `
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title">&#128170; Aanmelding ${esc(editie.naam)}</h2>
+        <h2 class="card-title"><span class="material-icons">volunteer_activism</span> Aanmelding ${esc(editie.naam)}</h2>
         <span class="badge badge-${statusKleur}">${statusLabel}</span>
       </div>
       <div class="card-body">
@@ -125,7 +125,7 @@ function buildAanmeldenView(editie) {
     ${vacatures.length ? buildVacatureKaarten() : ''}
     <div class="card" id="aanmelden-kaart" ${vacatures.length ? 'style="margin-top:1.5rem;"' : ''}>
       <div class="card-header">
-        <h2 class="card-title">&#128170; Aanmelden als vrijwilliger</h2>
+        <h2 class="card-title"><span class="material-icons">volunteer_activism</span> Aanmelden als vrijwilliger</h2>
         <span class="badge badge-info">${esc(editie.naam)}</span>
       </div>
       <div class="card-body">
@@ -138,7 +138,7 @@ function buildAanmeldenView(editie) {
         <form id="vrijw-form">
           <div id="gekozen-vacature-info" style="display:none;margin-bottom:1rem;">
             <div class="alert alert-success">
-              <span class="alert-icon">&#128170;</span>
+              <span class="alert-icon"><span class="material-icons">volunteer_activism</span></span>
               <span>Je meldt je aan voor: <strong id="gekozen-vacature-naam"></strong></span>
             </div>
           </div>
@@ -177,7 +177,7 @@ function buildVacatureKaarten() {
            style="cursor:${vol ? 'not-allowed' : 'pointer'};border:2px solid var(--color-border);transition:border-color .15s;margin-bottom:.75rem;">
         <div class="card-header">
           <div class="card-title" style="gap:.5rem;">
-            <span class="card-icon">&#128170;</span>
+            <span class="card-icon"><span class="material-icons">volunteer_activism</span></span>
             ${esc(v.naam)}
           </div>
           <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
@@ -190,12 +190,12 @@ function buildVacatureKaarten() {
             ${v.omschrijving ? `<p class="text-sm text-muted">${esc(v.omschrijving)}</p>` : ''}
             ${voortgang !== null ? `
               <div style="display:flex;gap:1rem;align-items:center;margin-top:.5rem;">
-                <span class="text-sm text-muted">&#128101; ${bezet}/${max}</span>
+                <span class="text-sm text-muted"><span class="material-icons">groups</span> ${bezet}/${max}</span>
                 <div style="flex:1;background:var(--color-border);border-radius:4px;height:5px;">
                   <div style="width:${voortgang}%;background:${vol ? 'var(--color-error)' : 'var(--color-success)'};height:5px;border-radius:4px;"></div>
                 </div>
               </div>
-            ` : (max === null ? `<p class="text-sm text-muted">&#128101; ${bezet} aangemeld</p>` : '')}
+            ` : (max === null ? `<p class="text-sm text-muted"><span class="material-icons">groups</span> ${bezet} aangemeld</p>` : '')}
           </div>
         ` : ''}
         ${!vol ? `
@@ -211,7 +211,7 @@ function buildVacatureKaarten() {
 
   return `
     <div class="section-header mb-16">
-      <h2 class="section-title">&#128203; Beschikbare vacatures</h2>
+      <h2 class="section-title"><span class="material-icons">content_paste</span> Beschikbare vacatures</h2>
       <span class="text-muted text-sm">${vacatures.length} vacature${vacatures.length !== 1 ? 's' : ''}</span>
     </div>
     ${kaarten}

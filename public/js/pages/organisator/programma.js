@@ -13,9 +13,9 @@ let alleEdities = [];
 export async function render() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
-      <div class="page-header-left"><h1>&#128197; Programma beheer</h1></div>
+      <div class="page-header-left"><h1><span class="material-icons">event</span> Programma beheer</h1></div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" id="btn-kopieer">&#128203; Kopieer van editie</button>
+        <button class="btn btn-ghost" id="btn-kopieer"><span class="material-icons">content_paste</span> Kopieer van editie</button>
         <button class="btn btn-primary" id="btn-nieuw-item">+ Item toevoegen</button>
       </div>
     </div>

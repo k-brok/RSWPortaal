@@ -14,12 +14,12 @@ export async function render() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Vrijwilligers</h1>
-      <button class="btn btn-primary" id="btn-nieuw-vac" style="display:none;">&#43; Nieuwe vacature</button>
+      <button class="btn btn-primary" id="btn-nieuw-vac" style="display:none;"><span class="material-icons">add</span> Nieuwe vacature</button>
     </div>
 
     <div class="tabs mb-24">
-      <button class="tab-btn active" data-tab="aanmeldingen">&#128101; Aanmeldingen</button>
-      <button class="tab-btn" data-tab="vacatures">&#128203; Vacatures</button>
+      <button class="tab-btn active" data-tab="aanmeldingen"><span class="material-icons">groups</span> Aanmeldingen</button>
+      <button class="tab-btn" data-tab="vacatures"><span class="material-icons">content_paste</span> Vacatures</button>
     </div>
 
     <div id="tab-aanmeldingen"><div class="loading-spinner"></div></div>
@@ -84,7 +84,7 @@ function renderAanmeldingen() {
     el.innerHTML = `
       <div class="card">
         <div class="card-body text-center" style="padding:2rem;">
-          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;">&#128170;</div>
+          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;"><span class="material-icons" style="font-size:2rem">volunteer_activism</span></div>
           <p class="text-muted">Nog niemand aangemeld als vrijwilliger voor <strong>${esc(editie.naam)}</strong>.</p>
         </div>
       </div>
@@ -103,7 +103,7 @@ function renderAanmeldingen() {
         <td><a href="mailto:${esc(v.gebruiker_email)}" class="link-muted">${esc(v.gebruiker_email)}</a></td>
         <td>${v.vacature_naam ? `<span class="badge badge-info">${esc(v.vacature_naam)}</span>` : '—'}</td>
         <td>${esc(v.taakvorkeur ?? '—')}</td>
-        <td>${v.opmerking ? `<span title="${esc(v.opmerking)}" style="cursor:help;">&#128196; bekijk</span>` : '—'}</td>
+        <td>${v.opmerking ? `<span title="${esc(v.opmerking)}" style="cursor:help;"><span class="material-icons" style="font-size:0.9rem">description</span> bekijk</span>` : '—'}</td>
         <td>
           <select class="form-input form-input-sm status-select" data-id="${v.id}">
             ${statusOpties}
@@ -111,7 +111,7 @@ function renderAanmeldingen() {
         </td>
         <td>
           <button class="btn btn-ghost btn-sm btn-danger btn-verwijder" data-id="${v.id}"
-            title="Verwijder aanmelding">&#128465;</button>
+            title="Verwijder aanmelding"><span class="material-icons">delete</span></button>
         </td>
       </tr>
     `;
@@ -126,7 +126,7 @@ function renderAanmeldingen() {
     </div>
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title">&#128170; Aanmeldingen — ${esc(editie.naam)}</h2>
+        <h2 class="card-title"><span class="material-icons">volunteer_activism</span> Aanmeldingen — ${esc(editie.naam)}</h2>
       </div>
       <div class="card-body" style="padding:0;overflow-x:auto;">
         <table class="data-table">
@@ -203,7 +203,7 @@ function renderVacatures() {
     el.innerHTML = `
       <div class="card">
         <div class="card-body text-center" style="padding:2rem;">
-          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;">&#128203;</div>
+          <div style="font-size:2rem;opacity:.4;margin-bottom:1rem;"><span class="material-icons" style="font-size:2rem">content_paste</span></div>
           <p class="text-muted">Nog geen vacatures voor <strong>${esc(editie.naam)}</strong>.</p>
           <p class="text-muted text-sm">Klik op '+ Nieuwe vacature' om een taak zichtbaar te maken voor potentiële vrijwilligers.</p>
         </div>
@@ -223,20 +223,20 @@ function renderVacatures() {
       <div class="card" style="margin-bottom:1rem;">
         <div class="card-header">
           <div class="card-title">
-            <span class="card-icon">&#128170;</span>
+            <span class="card-icon"><span class="material-icons">volunteer_activism</span></span>
             ${esc(v.naam)}
           </div>
           <div style="display:flex;gap:.5rem;align-items:center;">
             ${vol ? '<span class="badge badge-error">Vol</span>' : '<span class="badge badge-success">Open</span>'}
             ${nog !== null && nog > 0 ? `<span class="badge badge-warning">Nog ${nog} benodigd!</span>` : ''}
-            <button class="btn btn-ghost btn-sm" data-edit="${v.id}" title="Bewerken">&#9998;</button>
-            <button class="btn btn-ghost btn-sm btn-danger" data-del="${v.id}" title="Verwijderen">&#128465;</button>
+            <button class="btn btn-ghost btn-sm" data-edit="${v.id}" title="Bewerken"><span class="material-icons">edit</span></button>
+            <button class="btn btn-ghost btn-sm btn-danger" data-del="${v.id}" title="Verwijderen"><span class="material-icons">delete</span></button>
           </div>
         </div>
         <div class="card-body">
           ${v.omschrijving ? `<p class="text-sm text-muted" style="margin-bottom:.75rem;">${esc(v.omschrijving)}</p>` : ''}
           <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;">
-            <span class="text-sm">&#128101; <strong>${bezet}</strong>${max ? ` / ${max}` : ''} aangemeld</span>
+            <span class="text-sm"><span class="material-icons" style="font-size:0.9rem">groups</span> <strong>${bezet}</strong>${max ? ` / ${max}` : ''} aangemeld</span>
             ${voortgang !== null ? `
               <div style="flex:1;min-width:120px;background:var(--color-border);border-radius:4px;height:6px;">
                 <div style="width:${voortgang}%;background:${vol ? 'var(--color-error)' : 'var(--color-success)'};height:6px;border-radius:4px;transition:width .3s;"></div>
@@ -294,7 +294,7 @@ function openVacatureModal(vac) {
       <div class="modal" style="max-width:480px;">
         <div class="modal-header">
           <h3>${vac ? 'Vacature bewerken' : 'Nieuwe vacature'}</h3>
-          <button class="btn-icon" id="modal-sluiten">&#10005;</button>
+          <button class="btn-icon" id="modal-sluiten"><span class="material-icons">close</span></button>
         </div>
         <div class="modal-body">
           <div class="form-group">

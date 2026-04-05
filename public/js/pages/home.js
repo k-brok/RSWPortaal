@@ -136,9 +136,9 @@ function buildHero(editie, loggedIn) {
 
       ${datum || locatie || editieNaam ? `
         <div class="hero-meta">
-          ${editieNaam ? `<div class="hero-meta-item">&#127937; <strong>Editie: ${editieNaam}</strong></div>` : ''}
-          ${datum ? `<div class="hero-meta-item">&#128197; <strong>${datum}</strong></div>` : ''}
-          ${locatie ? `<div class="hero-meta-item">&#128205; <strong>${escapeHtml(locatie)}</strong></div>` : ''}
+          ${editieNaam ? `<div class="hero-meta-item"><span class="material-icons">flag</span> <strong>Editie: ${editieNaam}</strong></div>` : ''}
+          ${datum ? `<div class="hero-meta-item"><span class="material-icons">event</span> <strong>${datum}</strong></div>` : ''}
+          ${locatie ? `<div class="hero-meta-item"><span class="material-icons">location_on</span> <strong>${escapeHtml(locatie)}</strong></div>` : ''}
           ${fase === 'inschrijving' ? `<div class="hero-meta-item"><span class="badge badge-success">Inschrijving open</span></div>` : ''}
           ${fase === 'voorinschrijving' ? `<div class="hero-meta-item"><span class="badge badge-info">Voorinschrijving open</span></div>` : ''}
         </div>
@@ -174,9 +174,9 @@ function buildSnelleActies(user) {
   return `
     <div class="mb-24 snelle-acties-blok">
       <button class="snelle-acties-header" id="snelle-acties-toggle" aria-expanded="true">
-        <span class="section-title">&#9889; Snelle acties</span>
+        <span class="section-title"><span class="material-icons">bolt</span> Snelle acties</span>
         <span class="nav-group-chevron snelle-acties-chevron">
-          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="material-icons" aria-hidden="true">expand_more</span>
         </span>
       </button>
       <div class="quick-actions" id="snelle-acties-items">
@@ -192,35 +192,36 @@ function buildSnelleActies(user) {
 }
 
 function getActiesVoorRol(rol) {
+  const mi = n => `<span class="material-icons">${n}</span>`;
   const map = {
     leiding: [
-      { href: '#/inschrijvingen', icoon: '&#128221;', label: 'Inschrijving & eerdere edities' },
-      { href: '#/uitslagen',      icoon: '&#127942;', label: 'Uitslagen bekijken' },
+      { href: '#/inschrijvingen', icoon: mi('assignment'), label: 'Inschrijving & eerdere edities' },
+      { href: '#/uitslagen',      icoon: mi('emoji_events'), label: 'Uitslagen bekijken' },
     ],
     vrijwilliger: [
-      { href: '#/vrijwilliger/inschrijving', icoon: '&#128170;', label: 'Mijn inschrijving' },
-      { href: '#/programma',                 icoon: '&#128197;', label: 'Programma' },
+      { href: '#/vrijwilliger/inschrijving', icoon: mi('volunteer_activism'), label: 'Mijn inschrijving' },
+      { href: '#/programma',                 icoon: mi('event'), label: 'Programma' },
     ],
     jury: [
-      { href: '#/scoreformulier', icoon: '&#128394;&#65039;', label: 'Scores invoeren' },
-      { href: '#/scores',         icoon: '&#128200;',         label: 'Live scores' },
+      { href: '#/scoreformulier', icoon: mi('rate_review'), label: 'Scores invoeren' },
+      { href: '#/scores',         icoon: mi('leaderboard'), label: 'Live scores' },
     ],
     spelbegeleider: [
-      { href: '#/scoreformulier', icoon: '&#128101;', label: 'Mijn categorie' },
-      { href: '#/scores',         icoon: '&#128200;', label: 'Live scoretabel' },
+      { href: '#/scoreformulier', icoon: mi('groups'), label: 'Mijn categorie' },
+      { href: '#/scores',         icoon: mi('leaderboard'), label: 'Live scoretabel' },
     ],
     organisator: [
-      { href: '#/edities',                 icoon: '&#127937;', label: 'Edities' },
-      { href: '#/inschrijvingen',          icoon: '&#128203;', label: 'Inschrijvingen' },
-      { href: '#/organisator/plattegrond', icoon: '&#128205;', label: 'Plattegrond' },
-      { href: '#/scores',                  icoon: '&#128200;', label: 'Scorebeheer' },
+      { href: '#/edities',                 icoon: mi('flag'), label: 'Edities' },
+      { href: '#/inschrijvingen',          icoon: mi('content_paste'), label: 'Inschrijvingen' },
+      { href: '#/organisator/plattegrond', icoon: mi('map'), label: 'Plattegrond' },
+      { href: '#/scores',                  icoon: mi('leaderboard'), label: 'Scorebeheer' },
     ],
     admin: [
-      { href: '#/edities',                 icoon: '&#127937;', label: 'Edities' },
-      { href: '#/admin/gebruikers',        icoon: '&#128100;', label: 'Gebruikers' },
-      { href: '#/admin/verenigingen',      icoon: '&#127960;&#65039;', label: 'Verenigingen' },
-      { href: '#/organisator/categorieen', icoon: '&#127381;', label: 'Categorieën' },
-      { href: '#/scores',                  icoon: '&#128200;', label: 'Scorebeheer' },
+      { href: '#/edities',                 icoon: mi('flag'), label: 'Edities' },
+      { href: '#/admin/gebruikers',        icoon: mi('person'), label: 'Gebruikers' },
+      { href: '#/admin/verenigingen',      icoon: mi('location_city'), label: 'Verenigingen' },
+      { href: '#/organisator/categorieen', icoon: mi('category'), label: 'Categorieën' },
+      { href: '#/scores',                  icoon: mi('leaderboard'), label: 'Scorebeheer' },
     ],
   };
   return map[rol] ?? [];
@@ -235,7 +236,7 @@ function buildTop10Card(top10, editie) {
     <div class="card card-accent-primary">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-icon">&#127942;</span>
+          <span class="card-icon"><span class="material-icons">emoji_events</span></span>
           Top 10 &mdash; ${editie ? escapeHtml(editie.naam ?? String(editie.jaar)) : 'Actieve editie'}
         </div>
         ${gepubliceerd ? '<span class="badge badge-success">Live</span>' : '<span class="badge badge-muted">Nog niet gepubliceerd</span>'}
@@ -243,7 +244,7 @@ function buildTop10Card(top10, editie) {
       <div class="card-body">
         ${gepubliceerd && top10.length
           ? `<div class="ranking-list" id="top10-lijst">${buildTop10Rows(top10)}</div>`
-          : buildLegeStaat('&#128200;', gepubliceerd
+          : buildLegeStaat('<span class="material-icons">leaderboard</span>', gepubliceerd
               ? 'Nog geen scores beschikbaar.'
               : 'De uitslagen zijn nog niet gepubliceerd. Kom later terug!'
             )
@@ -262,7 +263,7 @@ function buildTop10Rows(top10) {
   return top10.slice(0, 10).map((item, i) => {
     const pos = i + 1;
     const posClass = pos === 1 ? 'top-1' : pos === 2 ? 'top-2' : pos === 3 ? 'top-3' : '';
-    const medaille = pos === 1 ? '&#129945;' : pos === 2 ? '&#129944;' : pos === 3 ? '&#129943;' : '';
+    const medaille = pos === 1 ? '<span class="material-icons" style="color:#FFD700">looks_one</span>' : pos === 2 ? '<span class="material-icons" style="color:#C0C0C0">looks_two</span>' : pos === 3 ? '<span class="material-icons" style="color:#CD7F32">looks_3</span>' : '';
     return `
       <div class="ranking-item">
         <div class="ranking-position ${posClass}">${medaille || pos}</div>
@@ -288,7 +289,7 @@ function buildProgrammaCard(programma, editie) {
     <div class="card card-accent-info">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-icon">&#128197;</span>
+          <span class="card-icon"><span class="material-icons">event</span></span>
           Programma
         </div>
         ${editie ? `<span class="badge badge-muted">${escapeHtml(editie.naam ?? String(editie.jaar))}</span>` : ''}
@@ -296,7 +297,7 @@ function buildProgrammaCard(programma, editie) {
       <div class="card-body" style="${rswItems.length ? 'padding:0;margin:-20px 0;' : ''}">
         ${rswItems.length
           ? buildProgrammaTimelijn(rswItems, meer)
-          : buildLegeStaat('&#128197;', 'Het programma wordt binnenkort gepubliceerd.')
+          : buildLegeStaat('<span class="material-icons">event</span>', 'Het programma wordt binnenkort gepubliceerd.')
         }
       </div>
       ${programma.length ? `
@@ -346,9 +347,7 @@ function buildProgrammaTimelijn(items, meer) {
           color:var(--color-text-muted);letter-spacing:0.03em;text-align:left;">
         <span>${escapeHtml(dagLabel)}</span>
         <span class="nav-group-chevron" style="width:20px;height:20px;${isFirst ? '' : 'transform:rotate(-90deg)'}">
-          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
-            <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <span class="material-icons" aria-hidden="true">expand_more</span>
         </span>
       </button>
       <div id="${dagId}" style="display:flex;flex-direction:column;${isFirst ? '' : 'display:none'}">
@@ -411,7 +410,7 @@ function buildVacaturesCard(vacatures, loggedIn) {
         <div class="schedule-content" style="flex:1;">
           <div class="schedule-title">${escapeHtml(v.naam)}</div>
           ${v.omschrijving ? `<div class="schedule-desc">${escapeHtml(v.omschrijving)}</div>` : ''}
-          <div class="schedule-desc" style="margin-top:4px;">&#128101; ${spots}</div>
+          <div class="schedule-desc" style="margin-top:4px;"><span class="material-icons" style="font-size:0.9rem">groups</span> ${spots}</div>
         </div>
       </div>
     `;
@@ -421,7 +420,7 @@ function buildVacaturesCard(vacatures, loggedIn) {
     <div class="card card-accent-success">
       <div class="card-header">
         <div class="card-title">
-          <span class="card-icon">&#128170;</span>
+          <span class="card-icon"><span class="material-icons">volunteer_activism</span></span>
           Vrijwilligers gezocht
         </div>
         <span class="badge badge-success">${vacatures.length} ${vacatures.length === 1 ? 'vacature' : 'vacatures'}</span>
@@ -451,13 +450,13 @@ function buildRolCards(user) {
     cards.push(`
       <div class="card card-accent-success">
         <div class="card-header">
-          <div class="card-title"><span class="card-icon">&#128203;</span> Mijn inschrijvingen</div>
+          <div class="card-title"><span class="card-icon"><span class="material-icons">content_paste</span></span> Mijn inschrijvingen</div>
         </div>
         <div class="card-body" id="leiding-inschrijvingen-widget">
-          ${buildLegeStaat('&#128203;', 'Laden...')}
+          ${buildLegeStaat('<span class="material-icons">content_paste</span>', 'Laden...')}
         </div>
         <div class="card-footer">
-          <a href="#/inschrijvingen" class="btn btn-primary btn-sm">&#43; Inschrijving</a>
+          <a href="#/inschrijvingen" class="btn btn-primary btn-sm"><span class="material-icons">add</span> Inschrijving</a>
         </div>
       </div>
     `);
@@ -467,7 +466,7 @@ function buildRolCards(user) {
     cards.push(`
       <div class="card card-accent-warning">
         <div class="card-header">
-          <div class="card-title"><span class="card-icon">&#128394;&#65039;</span> Mijn jury-toewijzing</div>
+          <div class="card-title"><span class="card-icon"><span class="material-icons">rate_review</span></span> Mijn jury-toewijzing</div>
         </div>
         <div class="card-body">
           <p class="text-muted text-sm">Je bent ingedeeld als jurylid. Ga naar het scoreformulier om scores in te voeren.</p>
@@ -483,7 +482,7 @@ function buildRolCards(user) {
     cards.push(`
       <div class="card card-accent-info">
         <div class="card-header">
-          <div class="card-title"><span class="card-icon">&#128101;</span> Mijn categorie</div>
+          <div class="card-title"><span class="card-icon"><span class="material-icons">groups</span></span> Mijn categorie</div>
         </div>
         <div class="card-body">
           <p class="text-muted text-sm">Bekijk de live scores van alle patrouilles in jouw categorie.</p>
@@ -500,7 +499,7 @@ function buildRolCards(user) {
     cards.push(`
       <div class="card card-accent-primary card-full">
         <div class="card-header">
-          <div class="card-title"><span class="card-icon">&#127937;</span> Organisator overzicht</div>
+          <div class="card-title"><span class="card-icon"><span class="material-icons">flag</span></span> Organisator overzicht</div>
           <span class="badge badge-primary">${rolNaam(user.rol)}</span>
         </div>
         <div class="card-body">
@@ -509,7 +508,7 @@ function buildRolCards(user) {
           </div>
         </div>
         <div class="card-footer">
-          <a href="#/edities" class="btn btn-primary btn-sm">&#127937; Edities</a>
+          <a href="#/edities" class="btn btn-primary btn-sm"><span class="material-icons">flag</span> Edities</a>
           <a href="#/inschrijvingen" class="btn btn-ghost btn-sm">Inschrijvingen</a>
           <a href="#/scores" class="btn btn-ghost btn-sm">Scorebeheer</a>
         </div>
@@ -522,11 +521,12 @@ function buildRolCards(user) {
 
 function buildOrgStatWidget() {
   // Placeholder stats — worden later gevuld via API
+  const mi = n => `<span class="material-icons">${n}</span>`;
   const stats = [
-    { icoon: '&#128101;', label: 'Groepen', waarde: '&mdash;', kleur: 'var(--color-primary)' },
-    { icoon: '&#128203;', label: 'Patrouilles', waarde: '&mdash;', kleur: 'var(--color-info)' },
-    { icoon: '&#128170;', label: 'Vrijwilligers', waarde: '&mdash;', kleur: 'var(--color-success)' },
-    { icoon: '&#128394;&#65039;', label: 'Juryleden', waarde: '&mdash;', kleur: 'var(--color-warning)' },
+    { icoon: mi('groups'), label: 'Groepen', waarde: '&mdash;', kleur: 'var(--color-primary)' },
+    { icoon: mi('content_paste'), label: 'Patrouilles', waarde: '&mdash;', kleur: 'var(--color-info)' },
+    { icoon: mi('volunteer_activism'), label: 'Vrijwilligers', waarde: '&mdash;', kleur: 'var(--color-success)' },
+    { icoon: mi('rate_review'), label: 'Juryleden', waarde: '&mdash;', kleur: 'var(--color-warning)' },
   ];
 
   return stats.map(s => `
@@ -546,7 +546,7 @@ function buildInfoCard() {
   return `
     <div class="card">
       <div class="card-header">
-        <div class="card-title"><span class="card-icon">&#8505;&#65039;</span> Over de RSW</div>
+        <div class="card-title"><span class="card-icon"><span class="material-icons">info</span></span> Over de RSW</div>
       </div>
       <div class="card-body">
         <p class="text-sm text-muted" style="margin-bottom:12px;">

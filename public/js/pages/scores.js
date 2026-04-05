@@ -52,7 +52,7 @@ let scoreMap  = new Map();
 function renderScoreBeheer() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
-      <div class="page-header-left"><h1>&#128200; Scorebeheer</h1></div>
+      <div class="page-header-left"><h1><span class="material-icons">leaderboard</span> Scorebeheer</h1></div>
     </div>
     <div id="sb-bericht"></div>
     <div class="card" style="padding:14px 16px;margin-bottom:14px">
@@ -379,8 +379,8 @@ function setStatus(s) {
 function renderLiveOvrzicht(momentId) {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
-      <h1>&#128200; Live scores</h1>
-      <a href="#/organisator/jury" class="btn btn-outline">&#8592; Terug naar jury</a>
+      <h1><span class="material-icons">leaderboard</span> Live scores</h1>
+      <a href="#/organisator/jury" class="btn btn-outline"><span class="material-icons">arrow_back</span> Terug naar jury</a>
     </div>
     <div id="scores-content"><p class="text-muted">Laden…</p></div>
   `;

@@ -20,7 +20,7 @@ function buildLogin() {
       <div class="auth-card">
 
         <div class="auth-logo">
-          <span style="font-size:2.5rem;">&#127956;</span>
+          <span class="material-icons" style="font-size:2.5rem;">landscape</span>
           <h1 class="auth-title">RSW Portaal</h1>
           <p class="auth-subtitle">Regio De Langstraat</p>
         </div>
@@ -28,7 +28,7 @@ function buildLogin() {
         <h2 style="font-size:1.15rem; margin-bottom:24px;">Inloggen</h2>
 
         <div id="login-error" class="alert alert-error" style="display:none;">
-          <span class="alert-icon">&#9888;&#65039;</span>
+          <span class="alert-icon"><span class="material-icons">warning</span></span>
           <span id="login-error-msg"></span>
         </div>
 
@@ -63,7 +63,7 @@ function buildLogin() {
                 required
               />
               <button type="button" class="input-icon-btn" id="toggle-wachtwoord" title="Wachtwoord tonen/verbergen">
-                &#128065;
+                <span class="material-icons">visibility</span>
               </button>
             </div>
           </div>

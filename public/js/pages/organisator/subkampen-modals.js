@@ -8,11 +8,11 @@ export function buildModals() {
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sub-modal-titel">
         <div class="modal-header">
           <div class="modal-title" id="sub-modal-titel">Subkamp</div>
-          <button class="btn-icon" id="sub-modal-sluiten">&#10005;</button>
+          <button class="btn-icon" id="sub-modal-sluiten"><span class="material-icons">close</span></button>
         </div>
         <div class="modal-body">
           <div id="sub-modal-error" class="alert alert-error mb-16" style="display:none">
-            <span class="alert-icon">❌</span><span id="sub-modal-error-tekst"></span>
+            <span class="alert-icon"><span class="material-icons">error</span></span><span id="sub-modal-error-tekst"></span>
           </div>
           <form id="sub-form" novalidate>
             <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end" class="mb-16">
@@ -62,7 +62,7 @@ export function buildModals() {
         <div class="modal-body">
           <p id="sub-confirm-tekst"></p>
           <div id="sub-confirm-error" class="alert alert-error mt-16" style="display:none">
-            <span class="alert-icon">❌</span><span id="sub-confirm-error-tekst"></span>
+            <span class="alert-icon"><span class="material-icons">error</span></span><span id="sub-confirm-error-tekst"></span>
           </div>
         </div>
         <div class="modal-footer">

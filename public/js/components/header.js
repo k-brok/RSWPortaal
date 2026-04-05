@@ -49,7 +49,7 @@ function buildHeader() {
     <div class="header-inner">
       <div class="header-left">
         <button class="btn-icon" id="sidebar-toggle" title="Menu in-/uitklappen" aria-label="Menu toggle">
-          &#9776;
+          <span class="material-icons">menu</span>
         </button>
         <a href="#/" class="header-logo">
           <span>RSW Portaal</span>
@@ -73,7 +73,7 @@ function buildUserMenu(user) {
         <div class="user-name">${escapeHtml(user.naam)}</div>
         <div class="role-badge-header">${rolLabel}</div>
       </div>
-      <span style="color:var(--color-text-muted);font-size:0.75rem;">&#9660;</span>
+      <span style="color:var(--color-text-muted);font-size:1rem;"><span class="material-icons" style="font-size:1rem;">expand_more</span></span>
     </div>
     <div id="user-dropdown" class="user-dropdown hidden">
       <div class="dropdown-user-info">
@@ -81,9 +81,9 @@ function buildUserMenu(user) {
         <div class="dropdown-user-rol">${rolLabel}</div>
       </div>
       <hr class="dropdown-divider" />
-      <a href="#/profiel" class="dropdown-item">&#128100; Mijn profiel</a>
+      <a href="#/profiel" class="dropdown-item"><span class="material-icons">manage_accounts</span> Mijn profiel</a>
       <hr class="dropdown-divider" />
-      <button class="dropdown-item dropdown-item-danger" id="logout-btn">&#128682; Uitloggen</button>
+      <button class="dropdown-item dropdown-item-danger" id="logout-btn"><span class="material-icons">logout</span> Uitloggen</button>
     </div>
   `;
 }

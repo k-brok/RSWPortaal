@@ -13,7 +13,7 @@ export async function render() {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
       <div class="page-header-left">
-        <h1>&#127979; Subkampen</h1>
+        <h1><span class="material-icons">holiday_village</span> Subkampen</h1>
         <p>Beheer subkampen voor de actieve editie. Volgorde bepaalt de nummering.</p>
       </div>
       <button class="btn btn-primary" id="btn-nieuw-sub">+ Subkamp toevoegen</button>
@@ -81,7 +81,7 @@ function renderLijst() {
   const container = document.getElementById('sub-lijst');
   if (!subkampen.length) {
     container.innerHTML = `<div class="empty-state">
-      <div class="empty-state-icon">&#127979;</div>
+      <div class="empty-state-icon"><span class="material-icons">holiday_village</span></div>
       <div class="empty-state-text">Nog geen subkampen aangemaakt</div></div>`;
     return;
   }
@@ -89,24 +89,24 @@ function renderLijst() {
     <div id="sub-drag-lijst" style="display:flex;flex-direction:column;gap:8px">
       ${subkampen.map((s, i) => buildRij(s, i)).join('')}
     </div>
-    <p class="text-muted text-sm mt-8">&#9660; Sleep rijen om de volgorde (= nummering) aan te passen</p>
+    <p class="text-muted text-sm mt-8"><span class="material-icons" style="font-size:0.9rem">expand_more</span> Sleep rijen om de volgorde (= nummering) aan te passen</p>
   `;
   bindEvents(container);
 }
 
 function buildRij(s, _i) {
   const koppeling = s.groep_naam
-    ? `<span class="badge badge-muted" style="font-size:.75rem">&#128100; ${escapeHtml(s.groep_naam)}</span>`
+    ? `<span class="badge badge-muted" style="font-size:.75rem"><span class="material-icons" style="font-size:.75rem">person</span> ${escapeHtml(s.groep_naam)}</span>`
     : s.vereniging_naam
-      ? `<span class="badge badge-muted" style="font-size:.75rem">&#127960;&#65039; ${escapeHtml(s.vereniging_naam)}</span>`
+      ? `<span class="badge badge-muted" style="font-size:.75rem"><span class="material-icons" style="font-size:.75rem">location_city</span> ${escapeHtml(s.vereniging_naam)}</span>`
       : '';
   const jongstelabel = s.is_jongste
-    ? `<span class="badge" style="font-size:.75rem;background:var(--color-warning);color:#000">&#11088; Jongste subkamp</span>`
+    ? `<span class="badge" style="font-size:.75rem;background:var(--color-warning);color:#000"><span class="material-icons" style="font-size:.75rem">star</span> Jongste subkamp</span>`
     : '';
   return `
     <div class="card" draggable="true" data-sub-id="${s.id}" data-volgorde="${s.volgorde}"
          style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:grab">
-      <span style="color:var(--color-muted);font-size:1.1rem;cursor:grab" title="Slepen">&#9783;</span>
+      <span style="color:var(--color-muted);font-size:1.1rem;cursor:grab" title="Slepen"><span class="material-icons">drag_indicator</span></span>
       <span style="width:20px;height:20px;border-radius:50%;background:${escapeHtml(s.kleur)};
                    flex-shrink:0;border:2px solid rgba(255,255,255,0.2)"></span>
       <div style="flex:1">
@@ -118,10 +118,10 @@ function buildRij(s, _i) {
       <div style="display:flex;gap:4px">
         <button class="btn-icon btn-jongste-sub" data-id="${s.id}"
                 title="${s.is_jongste ? 'Jongste subkamp uitschakelen' : 'Instellen als jongste subkamp'}"
-                style="${s.is_jongste ? 'color:var(--color-warning)' : 'opacity:.45'}">&#11088;</button>
-        <button class="btn-icon btn-edit-sub" data-id="${s.id}" title="Bewerken">&#9999;&#65039;</button>
+                style="${s.is_jongste ? 'color:var(--color-warning)' : 'opacity:.45'}"><span class="material-icons">star</span></button>
+        <button class="btn-icon btn-edit-sub" data-id="${s.id}" title="Bewerken"><span class="material-icons">edit</span></button>
         <button class="btn-icon btn-del-sub"  data-id="${s.id}" data-naam="${escapeHtml(s.naam)}"
-                title="Verwijderen" style="color:var(--color-error)">&#128465;</button>
+                title="Verwijderen" style="color:var(--color-error)"><span class="material-icons">delete</span></button>
       </div>
     </div>
   `;

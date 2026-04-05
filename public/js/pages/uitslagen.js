@@ -22,20 +22,24 @@ export async function render() {
 
   document.getElementById('content').innerHTML = `
     <div class="page-header">
-      <div class="page-header-left"><h1>&#127942; Uitslagen</h1></div>
+      <div class="page-header-left">
+        <h1 style="display:flex;align-items:center;gap:10px">
+          <span class="material-icons">emoji_events</span> Uitslagen
+          ${isAdmin ? `
+          <span style="display:inline-flex;align-items:center;gap:5px">
+            <span id="live-dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-text-muted);display:inline-block;flex-shrink:0"></span>
+            <span id="live-label" style="font-size:0.75rem;font-weight:400;color:var(--color-text-muted)">Verbinden…</span>
+          </span>` : ''}
+        </h1>
+      </div>
+      ${isAdmin ? `
       <div style="display:flex;align-items:center;gap:10px">
-        ${isAdmin ? `
         <select id="select-filter" class="form-control" style="width:auto;font-size:0.85rem">
           <option value="alle">Alle momenten</option>
           <option value="gepubliceerd">Alleen gepubliceerd</option>
         </select>
-        ` : ''}
-        ${isAdmin ? `<button id="btn-afdruk" class="btn btn-ghost" style="display:none">&#128438; Afdrukken</button>` : ''}
-        ${isAdmin ? `
-        <span id="live-dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-text-muted);display:inline-block"></span>
-        <span id="live-label" style="font-size:0.8rem;color:var(--color-text-muted)">Verbinden…</span>
-        ` : ''}
-      </div>
+        <button id="btn-afdruk" class="btn btn-ghost" style="display:none"><span class="material-icons">print</span> Afdrukken</button>
+      </div>` : ''}
     </div>
     <div id="uitslagen-inhoud"><p class="text-muted">Laden…</p></div>
   `;
@@ -125,13 +129,17 @@ function renderUitslagen({ resultaten, categorieen }) {
     ${ranglijstKaart('Algemene ranglijst', resultaten, categorieen, false)}
     ${jongste.length ? ranglijstKaart('Jongste patrouilles', jongste, categorieen, true) : ''}
   `;
+
+  attachExpandListeners();
 }
 
 function ranglijstKaart(titel, rijen, categorieen, isJongste) {
   const toonCategorieen = !isLeiding;
+  // Leiding mag namen/groepen zien; admin ook; publiek ook (na publicatie zijn resultaten openbaar)
+  const toonGroep = true;
 
   const catCols = toonCategorieen ? categorieen.map(c =>
-    `<th style="text-align:center;padding:8px 6px;font-size:0.75rem;white-space:nowrap;min-width:80px">
+    `<th class="col-hide-md" style="text-align:center;padding:8px 6px;font-size:0.75rem;white-space:nowrap;min-width:80px">
       ${esc(c.naam)}<br>
       <span style="font-weight:400;color:var(--color-text-muted)">${c.wegingspercentage}%</span>
     </th>`
@@ -144,59 +152,136 @@ function ranglijstKaart(titel, rijen, categorieen, isJongste) {
     return String(a.nummer ?? '').localeCompare(String(b.nummer ?? ''), 'nl', { numeric: true });
   });
 
-  const rows = gesorteerd.map(r => {
+  // Rij is klikbaar zodra er kolommen verborgen zijn (geen aparte expand-knop-kolom)
+  const rowExpandClass = toonCategorieen ? 'expandable-md' : 'expandable-sm';
+  const hintClass      = toonCategorieen ? 'hint-md'       : 'hint-sm';
+
+  // Aantal kolommen voor colspan in detail-rij (geen expand-kolom meer)
+  const colCount = 2 + (toonGroep ? 1 : 0) + 1 + (toonCategorieen ? categorieen.length : 0) + 1;
+
+  const rows = gesorteerd.map((r, i) => {
     const pos      = isJongste ? r.jongste_positie : r.positie;
-    const posBadge = posBadgeHtml(pos);
+    const posBadge = posBadgeHtml(pos, hintClass);
     const kleur    = r.subkamp?.kleur || '#888';
 
     const catCells = toonCategorieen ? categorieen.map(c => {
       const cs = r.categorieScores?.find(s => s.naam === c.naam);
-      return `<td style="text-align:center;padding:8px 6px;font-size:0.85rem">
+      return `<td class="col-hide-md" style="text-align:center;padding:8px 6px;font-size:0.85rem">
         ${cs ? cs.score.toFixed(1) + '%' : '<span style="color:var(--color-text-muted)">—</span>'}
       </td>`;
     }).join('') : '';
 
-    return `<tr style="border-bottom:1px solid var(--color-border)">
-      <td style="padding:10px 14px;font-size:1rem;font-weight:700;white-space:nowrap">${posBadge}</td>
-      <td style="padding:10px 8px;font-weight:700;font-size:0.95rem;white-space:nowrap">
-        ${r.jongste ? '<span title="Jongste patrouille" style="color:#e8a020">&#9733;</span> ' : ''}${esc(String(r.nummer ?? '—'))}
-      </td>
-      <td style="padding:10px 8px">
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:10px;height:10px;border-radius:50%;background:${esc(kleur)};flex-shrink:0"></div>
-          <span style="font-size:0.85rem">${esc(r.subkamp?.naam || '—')}</span>
+    // Patrouille-cel: nummer + optioneel naam voor admin
+    const naamSub = isAdmin && r.naam
+      ? `<br><span style="font-size:0.75rem;font-weight:400;color:var(--color-text-muted)">${esc(r.naam)}</span>`
+      : '';
+
+    // Groep-cel: groep naam + vereniging muted eronder
+    const groepCel = toonGroep ? `
+      <td class="col-hide-xs" style="padding:10px 8px">
+        <div style="font-size:0.85rem;line-height:1.3">
+          ${r.groep_naam ? `<span style="font-weight:600">${esc(r.groep_naam)}</span>` : '<span style="color:var(--color-text-muted)">—</span>'}
+          ${r.vereniging_naam ? `<br><span style="font-size:0.75rem;color:var(--color-text-muted)">${esc(r.vereniging_naam)}</span>` : ''}
         </div>
-      </td>
-      ${catCells}
-      <td style="padding:10px 12px;font-weight:700;font-size:0.95rem;text-align:right;white-space:nowrap;color:var(--color-primary)">
-        ${r.eindscore.toFixed(1)}%
-      </td>
-    </tr>`;
+      </td>` : '';
+
+    // Detail-items krijgen een CSS-klasse die overeenkomt met wanneer hun kolom verborgen is.
+    // CSS regelt automatisch welke items zichtbaar zijn — geen JS viewport-check nodig.
+    const detailParts = [];
+
+    if (toonCategorieen) {
+      categorieen.forEach(c => {
+        const cs = r.categorieScores?.find(s => s.naam === c.naam);
+        detailParts.push({ cls: 'for-md', label: esc(c.naam),
+          value: cs ? `${cs.score.toFixed(1)}%` : '<span style="color:var(--color-text-muted)">—</span>' });
+      });
+    }
+    if (r.subkamp?.naam) {
+      detailParts.push({ cls: 'for-sm', label: 'Subkamp',
+        value: `<span style="display:inline-flex;align-items:center;gap:5px">
+          <span style="width:9px;height:9px;border-radius:50%;background:${esc(kleur)};display:inline-block;flex-shrink:0"></span>
+          ${esc(r.subkamp.naam)}</span>` });
+    }
+    if (toonGroep && r.groep_naam) {
+      detailParts.push({ cls: 'for-xs', label: 'Groep', value: esc(r.groep_naam) });
+    }
+    if (toonGroep && r.vereniging_naam) {
+      detailParts.push({ cls: 'for-xs', label: 'Vereniging', value: esc(r.vereniging_naam) });
+    }
+
+    const detailHtml = detailParts.map(p =>
+      `<div class="detail-item ${p.cls}">
+        <span class="detail-item-label">${p.label}</span>
+        <span class="detail-item-value">${p.value}</span>
+      </div>`
+    ).join('');
+
+    const rid = `detail-${titel.replace(/\s+/g, '')}-${i}`;
+
+    return `
+      <tr class="uitslag-row ${rowExpandClass}" data-target="${rid}">
+        <td style="padding:10px 14px;font-size:1rem;font-weight:700;white-space:nowrap">${posBadge}</td>
+        <td style="padding:10px 8px;font-weight:700;font-size:0.95rem;white-space:nowrap;line-height:1.3">
+          ${r.jongste ? '<span title="Jongste patrouille" style="color:#e8a020"><span class="material-icons" style="font-size:1rem">star</span></span> ' : ''}${esc(String(r.nummer ?? '—'))}${naamSub}
+        </td>
+        ${groepCel}
+        <td class="col-hide-sm" style="padding:10px 8px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${esc(kleur)};flex-shrink:0"></div>
+            <span style="font-size:0.85rem">${esc(r.subkamp?.naam || '—')}</span>
+          </div>
+        </td>
+        ${catCells}
+        <td style="padding:10px 12px;font-weight:700;font-size:0.95rem;text-align:right;white-space:nowrap;color:var(--color-primary)">
+          ${r.eindscore.toFixed(1)}%
+        </td>
+      </tr>
+      <tr class="detail-row" id="${rid}" style="display:none">
+        <td colspan="${colCount}">
+          <div class="detail-row-inner">${detailHtml}</div>
+        </td>
+      </tr>`;
   }).join('');
 
   return `
-    <div class="card" style="margin-bottom:20px;overflow-x:auto;padding:0">
+    <div class="card" style="margin-bottom:20px;padding:0">
       <div style="padding:14px 18px;font-weight:700;font-size:1rem;border-bottom:2px solid var(--color-border)">
         ${esc(titel)}
       </div>
-      <table class="data-table" style="min-width:max-content">
+      <div class="uitslag-tabel-scroll">
+      <table class="data-table">
         <thead>
           <tr>
             <th>#</th>
             <th>Patrouille</th>
-            <th>Subkamp</th>
+            ${toonGroep ? '<th class="col-hide-xs">Groep</th>' : ''}
+            <th class="col-hide-sm">Subkamp</th>
             ${catCols}
             <th style="text-align:right">Eindscore</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
+      </div>
     </div>`;
 }
 
-function posBadgeHtml(pos) {
-  if (pos == null) return '<span style="color:var(--color-text-muted)">—</span>';
-  return `<span style="font-weight:700">${pos}</span>`;
+function posBadgeHtml(pos, hintClass) {
+  const tekst = pos != null ? `<span style="font-weight:700">${pos}</span>` : '<span style="color:var(--color-text-muted)">—</span>';
+  const hint  = hintClass ? `<span class="row-expand-hint ${hintClass}"><span class="material-icons" style="font-size:0.9rem">chevron_right</span></span>` : '';
+  return tekst + hint;
+}
+
+function attachExpandListeners() {
+  document.getElementById('uitslagen-inhoud')?.querySelectorAll('.uitslag-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const detailRow = document.getElementById(row.dataset.target);
+      if (!detailRow) return;
+      const open = detailRow.style.display !== 'none';
+      detailRow.style.display = open ? 'none' : 'table-row';
+      row.classList.toggle('expanded', !open);
+    });
+  });
 }
 
 // ── Afdrukken via pdfMake ────────────────────────────────────────
@@ -210,7 +295,7 @@ async function afdrukken() {
   try {
     await laadPdfMake();
   } catch {
-    if (btn) { btn.disabled = false; btn.innerHTML = '&#128438; Afdrukken'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-icons">print</span> Afdrukken'; }
     return;
   }
 
@@ -244,7 +329,7 @@ async function afdrukken() {
   const bestandsnaam = `uitslagen-${(editie?.naam || 'rsw').toLowerCase().replace(/\s+/g, '-')}-${editie?.jaar || ''}.pdf`;
   pdfMake.createPdf(dd).download(bestandsnaam);
 
-  if (btn) { btn.disabled = false; btn.innerHTML = '&#128438; Afdrukken'; }
+  if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-icons">print</span> Afdrukken'; }
 }
 
 function pdfTabel(titel, rijen, isJongste, bmLabel) {

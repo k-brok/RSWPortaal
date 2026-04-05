@@ -21,7 +21,7 @@ export async function render() {
       <select id="cat-editie-sel" class="form-input" style="max-width:260px;">
         <option>Laden…</option>
       </select>
-      <button class="btn btn-ghost" id="btn-importeer-editie" title="Kopieer categorieën van een andere editie">&#128229; Kopieer van vorige editie</button>
+      <button class="btn btn-ghost" id="btn-importeer-editie" title="Kopieer categorieën van een andere editie"><span class="material-icons">download</span> Kopieer van vorige editie</button>
       <button class="btn btn-primary" id="btn-nieuwe-cat">+ Nieuwe categorie</button>
     </div>
     <div id="cat-weging-balk" style="display:none;margin-bottom:12px;">
@@ -35,7 +35,7 @@ export async function render() {
         <div class="modal-header">
           <h2 id="cat-modal-titel">Categorie</h2>
           <button type="button" id="cat-modal-sluiten"
-            style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer">&#10005;</button>
+            style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer"><span class="material-icons">close</span></button>
         </div>
         <form id="cat-form">
           <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
@@ -70,7 +70,7 @@ export async function render() {
         <div class="modal-header">
           <h2 id="sub-modal-titel">Subcategorie</h2>
           <button type="button" id="sub-modal-sluiten"
-            style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer">&#10005;</button>
+            style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer"><span class="material-icons">close</span></button>
         </div>
         <form id="sub-form">
           <div class="modal-body">
@@ -93,7 +93,7 @@ export async function render() {
         <div class="modal-header">
           <h2 id="crit-modal-titel">Criterium</h2>
           <button type="button" id="crit-modal-sluiten"
-            style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer">&#10005;</button>
+            style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer"><span class="material-icons">close</span></button>
         </div>
         <form id="crit-form">
           <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow-y:auto;">
@@ -268,7 +268,7 @@ function renderCatKaart(cat) {
   return `
     <div class="card" style="margin-bottom:12px;" data-cat-id="${cat.id}">
       <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;" class="cat-header-row">
-        <span style="font-size:1rem;">${open ? '&#9660;' : '&#9654;'}</span>
+        <span><span class="material-icons" style="font-size:1rem">${open ? 'expand_more' : 'chevron_right'}</span></span>
         <strong style="flex:1;">${escapeHtml(cat.naam)}</strong>
         ${gestart ? '<span class="badge badge-warning" title="Jurering gestart — verwijderen geblokkeerd">JURERING GESTART</span>' : ''}
         ${flat.rally_type === 'tocht' ? '<span class="badge badge-info" style="font-size:.72rem">Tocht</span>' : ''}
@@ -344,7 +344,7 @@ const METHODE_LABELS = { direct: null, drempelwaarden: 'Drempels', groepen: 'Gro
 function renderCritRij(cr, catGestart) {
   const typeTekst = INVOER_TYPE_LABELS[cr.invoer_type] || 'Getal';
   const methodeTekst = METHODE_LABELS[cr.scorerings_methode];
-  const lagerBadge = cr.lager_is_beter ? ' <span title="Lager is beter" style="opacity:.7;">&#8595;</span>' : '';
+  const lagerBadge = cr.lager_is_beter ? ' <span title="Lager is beter" style="opacity:.7;"><span class="material-icons" style="font-size:0.9rem">arrow_downward</span></span>' : '';
   return `
     <tr data-crit-id="${cr.id}">
       <td>${escapeHtml(cr.naam)}${lagerBadge}</td>
@@ -683,7 +683,7 @@ function renderDrempelRij(van = 0, tot = 10, punten = 1) {
     <td><input type="number" class="form-input drempel-van" value="${van}" style="width:70px;" step="any"></td>
     <td><input type="number" class="form-input drempel-tot" value="${tot}" style="width:70px;" step="any"></td>
     <td><input type="number" class="form-input drempel-punten" value="${punten}" style="width:60px;" step="any"></td>
-    <td><button type="button" class="btn btn-sm btn-danger drempel-verwijder">&#10005;</button></td>
+    <td><button type="button" class="btn btn-sm btn-danger drempel-verwijder"><span class="material-icons">close</span></button></td>
   </tr>`;
 }
 

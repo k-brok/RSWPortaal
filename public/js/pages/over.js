@@ -7,7 +7,7 @@ export function render() {
 function buildPage() {
   return `
     <div class="page-header mb-24">
-      <h1 class="page-title">&#8505;&#65039; Over de RSW</h1>
+      <h1 class="page-title"><span class="material-icons">info</span> Over de RSW</h1>
       <p class="page-subtitle">
         Regionale Scouting Wedstrijden &mdash; Regio De Langstraat
       </p>
@@ -18,7 +18,7 @@ function buildPage() {
       <div class="card card-accent-primary card-full">
         <div class="card-header">
           <div class="card-title">
-            <span class="card-icon">&#127937;</span>
+            <span class="card-icon"><span class="material-icons">flag</span></span>
             Wat zijn de RSW?
           </div>
         </div>
@@ -41,7 +41,7 @@ function buildPage() {
       <div class="card card-accent-info">
         <div class="card-header">
           <div class="card-title">
-            <span class="card-icon">&#128101;</span>
+            <span class="card-icon"><span class="material-icons">groups</span></span>
             Deelname
           </div>
         </div>
@@ -59,7 +59,7 @@ function buildPage() {
       <div class="card card-accent-success">
         <div class="card-header">
           <div class="card-title">
-            <span class="card-icon">&#127381;</span>
+            <span class="card-icon"><span class="material-icons">category</span></span>
             Categorieën &amp; jurering
           </div>
         </div>
@@ -81,7 +81,7 @@ function buildPage() {
       <div class="card card-accent-warning">
         <div class="card-header">
           <div class="card-title">
-            <span class="card-icon">&#128200;</span>
+            <span class="card-icon"><span class="material-icons">leaderboard</span></span>
             Scoreberekening
           </div>
         </div>
@@ -103,7 +103,7 @@ function buildPage() {
       <div class="card">
         <div class="card-header">
           <div class="card-title">
-            <span class="card-icon">&#128170;</span>
+            <span class="card-icon"><span class="material-icons">volunteer_activism</span></span>
             Vrijwilligers
           </div>
         </div>
@@ -125,7 +125,7 @@ function buildPage() {
       <div class="card">
         <div class="card-header">
           <div class="card-title">
-            <span class="card-icon">&#128204;</span>
+            <span class="card-icon"><span class="material-icons">push_pin</span></span>
             Dit portaal
           </div>
         </div>

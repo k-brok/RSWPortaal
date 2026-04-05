@@ -56,7 +56,7 @@ function renderLeidingPagina() {
   const el = document.getElementById('inschrijv-inhoud');
 
   if (!editie) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#128197;</div>
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><span class="material-icons">event</span></div>
       <div class="empty-state-text">Er is momenteel geen actieve editie</div></div>`;
     return;
   }
@@ -64,14 +64,14 @@ function renderLeidingPagina() {
   el.innerHTML = `
     <div class="page-header">
       <div class="page-header-left">
-        <h1>&#128221; Inschrijving ${escapeHtml(editie.naam)}</h1>
+        <h1><span class="material-icons">assignment</span> Inschrijving ${escapeHtml(editie.naam)}</h1>
         <p>${faseBadge(fase, editie)}</p>
       </div>
       ${fase === 'voorinschrijving' && !melding
         ? `<button class="btn btn-primary" id="btn-nieuwe-pat">+ Patrouille aanmaken</button>` : ''}
     </div>
     ${melding ? `<div class="alert alert-warning mb-16" style="flex-direction:column;align-items:flex-start;gap:4px">
-      <div style="display:flex;align-items:center;gap:8px"><span>&#9888;&#65039;</span><strong>Geen groep gekoppeld</strong></div>
+      <div style="display:flex;align-items:center;gap:8px"><span class="material-icons">warning</span><strong>Geen groep gekoppeld</strong></div>
       <div style="font-size:.9rem">${escapeHtml(melding)}</div></div>` : ''}
     ${faseInfo(fase, editie)}
     <div id="patrouille-lijst">
@@ -103,10 +103,10 @@ function faseBadge(fase, editie) {
 
 function faseInfo(fase, editie) {
   if (fase === 'voorinschrijving') return `<div class="alert alert-info mb-16" style="background:var(--color-surface-alt)">
-    <span class="alert-icon">&#8505;&#65039;</span>
+    <span class="alert-icon"><span class="material-icons">info</span></span>
     <span>Meld je patrouilles aan. Je kunt in de inschrijvingsfase namen wijzigen en scouts toevoegen.</span></div>`;
   if (fase === 'inschrijving') return `<div class="alert alert-info mb-16" style="background:var(--color-surface-alt)">
-    <span class="alert-icon">&#8505;&#65039;</span>
+    <span class="alert-icon"><span class="material-icons">info</span></span>
     <span>Scouts toevoegen en namen wijzigen. Scouts: ${editie.min_scouts}–${editie.max_scouts} per patrouille,
     leeftijd ${editie.min_leeftijd ?? '?'}–${editie.max_leeftijd ?? '?'} jaar op LSW.</span></div>`;
   return '';
@@ -115,7 +115,7 @@ function faseInfo(fase, editie) {
 function legeStatus(fase) {
   const tekst = fase === 'gesloten' ? 'Inschrijving is momenteel gesloten'
     : `Nog geen patrouilles aangemeld${fase === 'voorinschrijving' ? ' — klik op "+ Patrouille aanmaken"' : ''}`;
-  return `<div class="empty-state"><div class="empty-state-icon">&#128100;</div><div class="empty-state-text">${tekst}</div></div>`;
+  return `<div class="empty-state"><div class="empty-state-icon"><span class="material-icons">person</span></div><div class="empty-state-text">${tekst}</div></div>`;
 }
 
 function leidingKaart(p, fase, editie) {
@@ -131,10 +131,10 @@ function leidingKaart(p, fase, editie) {
           ${jongsteBadge} ${aantalBadge} ${bmBadge}
         </div>
         <div style="display:flex;gap:6px">
-          ${editie.uitslagen_gepubliceerd ? `<button class="btn btn-ghost btn-sm btn-scorekaart-pat" data-id="${p.id}">&#128438; Scorekaart</button>` : ''}
-          ${fase !== 'gesloten' ? `<button class="btn btn-ghost btn-sm btn-edit-pat" data-id="${p.id}">&#9999;&#65039; Naam wijzigen</button>` : ''}
+          ${editie.uitslagen_gepubliceerd ? `<button class="btn btn-ghost btn-sm btn-scorekaart-pat" data-id="${p.id}"><span class="material-icons">print</span> Scorekaart</button>` : ''}
+          ${fase !== 'gesloten' ? `<button class="btn btn-ghost btn-sm btn-edit-pat" data-id="${p.id}"><span class="material-icons">edit</span> Naam wijzigen</button>` : ''}
           ${fase === 'voorinschrijving' ? `<button class="btn btn-ghost btn-sm btn-del-pat" data-id="${p.id}" data-naam="${escapeHtml(p.naam)}"
-            style="color:var(--color-error)">&#128465; Verwijderen</button>` : ''}
+            style="color:var(--color-error)"><span class="material-icons">delete</span> Verwijderen</button>` : ''}
         </div>
       </div>
       <div class="card-body" style="padding-top:0">
@@ -152,7 +152,7 @@ function bindLeidingEvents(fase, editie) {
       btn.textContent = 'Laden…';
       try { await drukScorekaartAf(Number(btn.dataset.id)); }
       catch (e) { alert('Fout bij genereren scorekaart: ' + e.message); }
-      finally { btn.disabled = false; btn.innerHTML = '&#128438; Scorekaart'; }
+      finally { btn.disabled = false; btn.innerHTML = '<span class="material-icons">print</span> Scorekaart'; }
     })
   );
   document.querySelectorAll('.btn-edit-pat').forEach(btn =>
@@ -341,7 +341,7 @@ async function laadHistorisch() {
     el.innerHTML = `
       <div style="margin-top:24px;border-top:1px solid var(--color-border);padding-top:20px">
         <h2 style="font-size:1rem;font-weight:600;margin-bottom:12px;color:var(--color-text-muted)">
-          &#128203; Eerdere edities
+          <span class="material-icons">content_paste</span> Eerdere edities
         </h2>
         ${historisch.map(({ editie, patrouilles }) => `
           <div class="card mb-16">
@@ -354,7 +354,7 @@ async function laadHistorisch() {
               <span style="color:var(--color-text-muted);font-size:.85rem">
                 ${editie.lsw_datum ? new Date(editie.lsw_datum).toLocaleDateString('nl-NL') : ''}
                 ${editie.locatie ? '· ' + escapeHtml(editie.locatie) : ''}
-                &#9654;
+                <span class="material-icons" style="font-size:0.9rem">chevron_right</span>
               </span>
             </div>
             <div id="hist-detail-${editie.id}" style="display:none;padding:0 16px 16px">
@@ -384,7 +384,7 @@ async function laadHistorisch() {
         if (!detail) return;
         const open = detail.style.display !== 'none';
         detail.style.display = open ? 'none' : '';
-        if (pijl) pijl.innerHTML = open ? '&#9654;' : '&#9660;';
+        if (pijl) pijl.innerHTML = open ? '<span class="material-icons" style="font-size:0.9rem">chevron_right</span>' : '<span class="material-icons" style="font-size:0.9rem">expand_more</span>';
       });
     });
   } catch (_) {
@@ -418,7 +418,7 @@ function renderOrgPagina() {
   const { editie, fase, patrouilles } = orgData;
   const el = document.getElementById('inschrijv-inhoud');
   if (!editie) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#128197;</div>
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><span class="material-icons">event</span></div>
       <div class="empty-state-text">Geen actieve editie</div></div>`;
     return;
   }
@@ -428,7 +428,7 @@ function renderOrgPagina() {
     <div class="page-header">
       <h1>Inschrijvingen ${escapeHtml(editie.naam)}</h1>
       <div style="display:flex;gap:8px">
-        ${patrouilles.length ? `<button class="btn btn-outline" id="btn-alle-scorekaarten">&#128438; Alle scorekaarten</button>` : ''}
+        ${patrouilles.length ? `<button class="btn btn-outline" id="btn-alle-scorekaarten"><span class="material-icons">print</span> Alle scorekaarten</button>` : ''}
         <button class="btn btn-primary" id="btn-nieuw-pat">+ Patrouille</button>
       </div>
     </div>
@@ -454,7 +454,7 @@ function renderOrgPagina() {
       </div>
     </div>
     ${patrouilles.length === 0
-      ? `<div class="empty-state"><div class="empty-state-icon">&#128100;</div><div class="empty-state-text">Nog geen inschrijvingen</div></div>`
+      ? `<div class="empty-state"><div class="empty-state-icon"><span class="material-icons">person</span></div><div class="empty-state-text">Nog geen inschrijvingen</div></div>`
       : `<div class="card"><table class="data-table" id="pat-tabel">
           <thead><tr><th></th><th>Groep</th><th>Patrouille</th>
             <th style="text-align:center">J</th><th style="text-align:center">Scouts</th>
@@ -471,14 +471,14 @@ function orgRijHtml(p, editie) {
   const open = openRijen.has(p.id);
   return `
     <tr class="pat-rij" data-pat-id="${p.id}" style="cursor:pointer">
-      <td style="width:28px;text-align:center;color:var(--color-primary)">${open ? '&#9660;' : '&#9654;'}</td>
+      <td style="width:28px;text-align:center;color:var(--color-primary)">${open ? '<span class="material-icons" style="font-size:1rem">expand_more</span>' : '<span class="material-icons" style="font-size:1rem">chevron_right</span>'}</td>
       <td>${escapeHtml(p.groep_naam)}</td>
       <td><strong>${escapeHtml(p.naam)}</strong></td>
       <td style="text-align:center">${p.jongste ? '✓' : ''}</td>
       <td style="text-align:center">${p.aantal_deelnemers}</td>
       <td>${bm}${p.bm_reden ? `<br><small class="text-muted">${escapeHtml(p.bm_reden)}</small>` : ''}</td>
       <td><div style="display:flex;gap:4px" onclick="event.stopPropagation()">
-        <button class="btn btn-sm btn-ghost" data-actie="scorekaart" data-id="${p.id}" title="Scorekaart printen">&#128438;</button>
+        <button class="btn btn-sm btn-ghost" data-actie="scorekaart" data-id="${p.id}" title="Scorekaart printen"><span class="material-icons">print</span></button>
         <button class="btn btn-sm btn-outline" data-actie="bewerk" data-id="${p.id}">Bewerk</button>
         <button class="btn btn-sm btn-danger" data-actie="verwijder" data-id="${p.id}">Verwijder</button>
       </div></td>
@@ -562,10 +562,10 @@ async function toggleDetail(patId, editie) {
   if (!detailRij) return;
   if (openRijen.has(patId)) {
     openRijen.delete(patId); detailRij.style.display = 'none';
-    patRij.querySelector('td:first-child').innerHTML = '&#9654;';
+    patRij.querySelector('td:first-child').innerHTML = '<span class="material-icons" style="font-size:1rem">chevron_right</span>';
   } else {
     openRijen.add(patId); detailRij.style.display = '';
-    patRij.querySelector('td:first-child').innerHTML = '&#9660;';
+    patRij.querySelector('td:first-child').innerHTML = '<span class="material-icons" style="font-size:1rem">expand_more</span>';
     await laadOrgDetail(patId, editie);
   }
 }
@@ -593,7 +593,7 @@ function renderOrgDeelnemers(p, editie) {
       <tbody>${p.deelnemers.map(d => {
         const isPL = d.functie === 'PL', isAPL = d.functie === 'APL';
         return `<tr data-d-id="${d.id}" data-source-pat="${p.id}" data-functie="${d.functie ?? ''}" draggable="true" style="cursor:grab">
-          <td style="text-align:center;color:var(--color-text-muted);user-select:none;padding:4px 6px">&#8942;&#8942;</td>
+          <td style="text-align:center;color:var(--color-text-muted);user-select:none;padding:4px 6px"><span class="material-icons" style="font-size:1rem">drag_indicator</span></td>
           <td>${escapeHtml(d.achternaam)}, ${escapeHtml(d.voornaam)}</td>
           <td>${d.geboortedatum ? new Date(d.geboortedatum).toLocaleDateString('nl-NL') : '—'}</td>
           ${lsw ? `<td>${d.leeftijd_lsw ?? '—'} j</td>` : ''}
@@ -759,7 +759,7 @@ async function doeVerplaats(deelnemerId, vanPatId, naarPatId, editie) {
       openRijen.add(naarPatId);
       document.querySelector(`.detail-rij[data-pat-id="${naarPatId}"]`)?.style.setProperty('display', '');
       const pRij = document.querySelector(`.pat-rij[data-pat-id="${naarPatId}"]`);
-      if (pRij) pRij.querySelector('td:first-child').innerHTML = '&#9660;';
+      if (pRij) pRij.querySelector('td:first-child').innerHTML = '<span class="material-icons" style="font-size:1rem">expand_more</span>';
     }
     await laadOrgDetail(naarPatId, editie);
   } catch (e) { toonBericht('error', e.message); }
@@ -803,7 +803,7 @@ function modalPatrouilleHtml() {
     <div class="modal">
       <div class="modal-header">
         <h2 id="pat-modal-titel">Patrouille</h2>
-        <button type="button" id="pat-modal-sluiten" style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer">&#10005;</button>
+        <button type="button" id="pat-modal-sluiten" style="background:none;border:none;color:var(--color-text);font-size:1.2rem;cursor:pointer"><span class="material-icons">close</span></button>
       </div>
       <form id="pat-form">
         <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
@@ -829,11 +829,11 @@ function leidingModalsHtml() {
       <div class="modal" role="dialog">
         <div class="modal-header">
           <div class="modal-title" id="pat-modal-titel">Patrouille</div>
-          <button class="btn-icon" id="pat-modal-sluiten">&#10005;</button>
+          <button class="btn-icon" id="pat-modal-sluiten"><span class="material-icons">close</span></button>
         </div>
         <div class="modal-body">
           <div id="pat-modal-error" class="alert alert-error mb-16" style="display:none">
-            <span class="alert-icon">❌</span><span id="pat-modal-error-tekst"></span>
+            <span class="alert-icon"><span class="material-icons">error</span></span><span id="pat-modal-error-tekst"></span>
           </div>
           <div class="form-group">
             <label class="form-label" for="pat-naam">Naam patrouille <span style="color:var(--color-primary)">*</span></label>
