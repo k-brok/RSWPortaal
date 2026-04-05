@@ -3,6 +3,7 @@
 
 import { isLoggedIn, getUser, hasRole } from '../services/auth.js';
 import { getActieveEditie, getTop10, getProgramma, getVacatures } from '../services/api.js';
+import { formatTijd } from '../utils/datum.js';
 
 // Wordt bijgehouden zodat onDestroy() de interval kan stoppen
 let refreshInterval = null;
@@ -30,6 +31,31 @@ export async function render() {
 }
 
 export function onMount() {
+  // Snelle acties inklapbaar op mobiel
+  const toggle = document.getElementById('snelle-acties-toggle');
+  const items  = document.getElementById('snelle-acties-items');
+  if (toggle && items) {
+    toggle.addEventListener('click', () => {
+      if (window.innerWidth > 768) return; // alleen op mobiel
+      const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!isOpen));
+      toggle.querySelector('.snelle-acties-chevron')?.classList.toggle('collapsed', isOpen);
+      items.classList.toggle('hidden', isOpen);
+    });
+  }
+
+  // Programma dag-headers inklapbaar
+  document.querySelectorAll('.prog-dag-header').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const dagEl   = document.getElementById(btn.dataset.dag);
+      const chevron = btn.querySelector('.nav-group-chevron');
+      const isOpen  = dagEl.style.display !== 'none';
+      dagEl.style.display = isOpen ? 'none' : 'flex';
+      dagEl.style.flexDirection = 'column';
+      chevron.style.transform = isOpen ? 'rotate(-90deg)' : '';
+    });
+  });
+
   // Ververs top 10 elke 60 seconden als uitslagen gepubliceerd zijn
   refreshInterval = setInterval(async () => {
     const editie = await getActieveEditie();
@@ -49,16 +75,15 @@ export function onDestroy() {
 
 function buildPage(editie, top10, programma, vacatures, user, loggedIn) {
   return `
-    ${loggedIn ? buildWelcomeCard(user) : ''}
     ${buildHero(editie, loggedIn)}
     ${loggedIn ? buildSnelleActies(user) : ''}
 
     <div class="dashboard-grid">
       ${buildTop10Card(top10, editie)}
       ${buildProgrammaCard(programma, editie)}
+      ${buildInfoCard()}
       ${vacatures.length ? buildVacaturesCard(vacatures, loggedIn) : ''}
       ${loggedIn ? buildRolCards(user) : ''}
-      ${buildInfoCard()}
     </div>
   `;
 }
@@ -88,13 +113,13 @@ function buildHero(editie, loggedIn) {
 
   const locatie = editie?.locatie ?? null;
 
+  const editieNaam = editie ? escapeHtml(editie.naam ?? String(editie.jaar)) : null;
+  const fase = bepaalFase(editie);
+
   return `
     <div class="hero mb-24">
-      <div class="badge badge-primary mb-8">
-        ${editie ? 'Actieve editie' : 'Regionale Scouting Wedstrijden'}
-      </div>
-      <h1 class="hero-title mt-8">
-        Welkom bij het<br><span>${titel}</span>
+      <h1 class="hero-title">
+        Welkom op het RSW Portaal
       </h1>
       <p class="hero-subtitle">
         Het portaal voor deelnemers, vrijwilligers, jury en organisatoren van
@@ -109,12 +134,13 @@ function buildHero(editie, loggedIn) {
         </div>
       ` : ''}
 
-      ${datum || locatie ? `
+      ${datum || locatie || editieNaam ? `
         <div class="hero-meta">
+          ${editieNaam ? `<div class="hero-meta-item">&#127937; <strong>Editie: ${editieNaam}</strong></div>` : ''}
           ${datum ? `<div class="hero-meta-item">&#128197; <strong>${datum}</strong></div>` : ''}
           ${locatie ? `<div class="hero-meta-item">&#128205; <strong>${escapeHtml(locatie)}</strong></div>` : ''}
-          ${bepaalFase(editie) === 'inschrijving' ? `<div class="hero-meta-item"><span class="badge badge-success">Inschrijving open</span></div>` : ''}
-          ${bepaalFase(editie) === 'voorinschrijving' ? `<div class="hero-meta-item"><span class="badge badge-info">Voorinschrijving open</span></div>` : ''}
+          ${fase === 'inschrijving' ? `<div class="hero-meta-item"><span class="badge badge-success">Inschrijving open</span></div>` : ''}
+          ${fase === 'voorinschrijving' ? `<div class="hero-meta-item"><span class="badge badge-info">Voorinschrijving open</span></div>` : ''}
         </div>
       ` : ''}
     </div>
@@ -146,11 +172,14 @@ function buildSnelleActies(user) {
   if (!acties.length) return '';
 
   return `
-    <div class="mb-24">
-      <div class="section-header mb-16">
-        <h2 class="section-title">&#9889; Snelle acties</h2>
-      </div>
-      <div class="quick-actions">
+    <div class="mb-24 snelle-acties-blok">
+      <button class="snelle-acties-header" id="snelle-acties-toggle" aria-expanded="true">
+        <span class="section-title">&#9889; Snelle acties</span>
+        <span class="nav-group-chevron snelle-acties-chevron">
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+      </button>
+      <div class="quick-actions" id="snelle-acties-items">
         ${acties.map(a => `
           <a href="${a.href}" class="quick-action-btn">
             <span class="quick-action-icon">${a.icoon}</span>
@@ -250,17 +279,23 @@ function buildTop10Rows(top10) {
 // ── Programma card (publiek) ──────────────────────────────────────
 
 function buildProgrammaCard(programma, editie) {
+  // Samenvatting: max 6 items, alleen RSW-dag items (geen inschrijvingsitems)
+  const rswItems = programma.filter(i => i.type !== 'inschrijving').slice(0, 6);
+  const totaal   = programma.filter(i => i.type !== 'inschrijving').length;
+  const meer     = totaal > 6;
+
   return `
     <div class="card card-accent-info">
       <div class="card-header">
         <div class="card-title">
           <span class="card-icon">&#128197;</span>
-          Programma &mdash; ${editie ? escapeHtml(editie.naam ?? String(editie.jaar)) : 'Actieve editie'}
+          Programma
         </div>
+        ${editie ? `<span class="badge badge-muted">${escapeHtml(editie.naam ?? String(editie.jaar))}</span>` : ''}
       </div>
-      <div class="card-body">
-        ${programma.length
-          ? `<div class="schedule-list">${buildProgrammaItems(programma)}</div>`
+      <div class="card-body" style="${rswItems.length ? 'padding:0;margin:-20px 0;' : ''}">
+        ${rswItems.length
+          ? buildProgrammaTimelijn(rswItems, meer)
           : buildLegeStaat('&#128197;', 'Het programma wordt binnenkort gepubliceerd.')
         }
       </div>
@@ -273,16 +308,88 @@ function buildProgrammaCard(programma, editie) {
   `;
 }
 
-function buildProgrammaItems(programma) {
-  return programma.map(item => `
-    <div class="schedule-item">
-      <div class="schedule-time">${formatTijd(item.starttijd)}</div>
-      <div class="schedule-content">
-        <div class="schedule-title">${escapeHtml(item.naam)}</div>
-        ${item.omschrijving ? `<div class="schedule-desc">${escapeHtml(item.omschrijving)}</div>` : ''}
-      </div>
-    </div>
-  `).join('');
+function buildProgrammaTimelijn(items, meer) {
+  const nu = new Date();
+
+  // Groepeer per dag, filter afgelopen items
+  const perDag = new Map();
+  for (const item of items) {
+    const start = item.start_tijd ?? item.starttijd;
+    const eind  = item.eind_tijd ?? item.eindtijd ?? start;
+    // Verberg item als eindtijd in het verleden ligt
+    if (new Date(eind) < nu) continue;
+    const key = new Date(start).toISOString().slice(0, 10);
+    if (!perDag.has(key)) perDag.set(key, []);
+    perDag.get(key).push(item);
+  }
+
+  if (perDag.size === 0) {
+    return `<div style="padding:12px;font-size:0.85rem;color:var(--color-text-muted)">Geen aankomende programma-items.</div>`;
+  }
+
+  let html = `<div style="overflow:hidden">`;
+  let dagIndex = 0;
+
+  for (const [dagKey, dagItems] of perDag) {
+    const isFirst  = dagIndex === 0;
+    const dagId    = `prog-dag-${dagIndex}`;
+    const dagLabel = new Date(dagKey + 'T12:00:00').toLocaleDateString('nl-NL', {
+      weekday: 'long', day: 'numeric', month: 'long',
+    });
+
+    html += `
+      ${dagIndex > 0 ? '<div style="height:1px;background:var(--color-border)"></div>' : ''}
+      <button class="prog-dag-header ${isFirst ? '' : 'collapsed'}" data-dag="${dagId}"
+        style="display:flex;align-items:center;justify-content:space-between;width:100%;
+          padding:7px 12px;background:var(--color-surface-alt);border:none;cursor:pointer;
+          font-size:0.75rem;font-weight:700;text-transform:capitalize;
+          color:var(--color-text-muted);letter-spacing:0.03em;text-align:left;">
+        <span>${escapeHtml(dagLabel)}</span>
+        <span class="nav-group-chevron" style="width:20px;height:20px;${isFirst ? '' : 'transform:rotate(-90deg)'}">
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+            <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </button>
+      <div id="${dagId}" style="display:flex;flex-direction:column;${isFirst ? '' : 'display:none'}">
+        ${dagItems.map((item, i) => {
+          const isJury  = item.type === 'jurymoment';
+          const accent  = isJury ? 'var(--color-primary)' : 'var(--color-info)';
+          const start   = item.start_tijd ?? item.starttijd;
+          const eind    = item.eind_tijd ?? item.eindtijd ?? null;
+          const tijdStr = formatTijd(start);
+          const eindStr = eind ? formatTijd(eind) : null;
+          const borderB = i < dagItems.length - 1 ? 'border-bottom:1px solid var(--color-border)' : '';
+          return `
+            <div style="display:flex;gap:0;align-items:stretch;${borderB}">
+              <div style="display:flex;flex-direction:column;align-items:center;width:36px;flex-shrink:0;padding:10px 0">
+                <div style="width:8px;height:8px;border-radius:50%;background:${accent};flex-shrink:0;margin-top:3px"></div>
+                ${i < dagItems.length - 1 ? `<div style="width:2px;flex:1;background:var(--color-border);margin-top:3px"></div>` : ''}
+              </div>
+              <div style="padding:8px 0 8px 4px;flex:1;min-width:0">
+                <div style="font-size:0.75rem;font-weight:600;color:var(--color-text-muted);white-space:nowrap">
+                  ${escapeHtml(tijdStr)}${eindStr ? ` – ${escapeHtml(eindStr)}` : ''}
+                </div>
+                <div style="font-weight:600;font-size:0.88rem;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ${escapeHtml(item.naam)}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>`;
+
+    dagIndex++;
+  }
+
+  if (meer) {
+    html += `<div style="padding:6px 12px;font-size:0.75rem;color:var(--color-text-muted);font-style:italic;border-top:1px solid var(--color-border)">
+      + meer items op de programmapagina
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
 }
 
 // ── Vacatures card (publiek) ──────────────────────────────────────
@@ -495,12 +602,6 @@ function formatScore(score) {
   return Number(score).toFixed(1);
 }
 
-function formatTijd(tijdStr) {
-  if (!tijdStr) return '';
-  // Verwacht 'HH:MM:SS' of 'HH:MM'
-  const delen = String(tijdStr).split(':');
-  return `${delen[0]}:${delen[1]}`;
-}
 
 function userInitialen(naam = '') {
   return naam.trim().split(' ')

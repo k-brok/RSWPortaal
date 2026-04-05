@@ -2,6 +2,7 @@
 
 import { get } from '../services/api.js';
 import { escapeHtml as esc } from '../utils/escape.js';
+import { formatTijd } from '../utils/datum.js';
 
 export async function render() {
   document.getElementById('content').innerHTML = `
@@ -151,9 +152,6 @@ function dateOf(dt) {
   return new Date(dt).toISOString().slice(0, 10);
 }
 
-function formatTijd(dt) {
-  return new Date(dt).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-}
 
 function formatDatum(dt) {
   return new Date(dt).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });

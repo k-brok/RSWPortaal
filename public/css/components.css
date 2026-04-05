@@ -189,7 +189,7 @@
 
 .ranking-item {
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
@@ -217,11 +217,17 @@
 .ranking-name {
   font-weight: 500;
   font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ranking-meta {
   font-size: 0.78rem;
   color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ranking-score {
@@ -302,6 +308,89 @@
   font-size: 0.78rem;
   color: var(--color-text-muted);
   margin-top: 2px;
+}
+
+/* ── Compacte programma tijdlijn (home card) ── */
+.prog-dag-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  padding: 8px 0 4px;
+}
+
+.prog-dag-label:first-child {
+  padding-top: 0;
+}
+
+.prog-rij {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.prog-tijdlijn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  flex-shrink: 0;
+  padding-top: 5px;
+}
+
+.prog-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.prog-lijn {
+  width: 2px;
+  flex: 1;
+  background: var(--color-border);
+  margin-top: 3px;
+  min-height: 8px;
+}
+
+.prog-inhoud {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+  padding: 2px 0 8px;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+}
+
+.prog-tijd {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  white-space: nowrap;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.prog-naam {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prog-meer {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  padding: 6px 0 0 24px;
+  font-style: italic;
 }
 
 /* ── Info card / statistieken ── */
@@ -900,6 +989,36 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.snelle-acties-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0 0 16px;
+  cursor: default;
+  text-align: left;
+}
+
+.snelle-acties-chevron {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .snelle-acties-header {
+    cursor: pointer;
+  }
+
+  .snelle-acties-chevron {
+    display: flex;
+  }
+
+  .quick-actions.hidden {
+    display: none;
+  }
 }
 
 .section-title {
@@ -1627,6 +1746,10 @@ table.data-table {
 }
 
 @media (max-width: 480px) {
+  .card {
+    padding: 14px;
+  }
+
   .quick-actions {
     grid-template-columns: repeat(2, 1fr);
   }

@@ -23,3 +23,16 @@ export function naarLocalDT(utcStr) {
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+
+/**
+ * Formatteert een UTC datetime-string naar een leesbare tijd (HH:MM) in de
+ * Nederlandse tijdzone (Europe/Amsterdam).
+ *
+ * Voorbeeld: "2026-06-14T08:00:00.000Z" → "10:00" (CEST)
+ */
+export function formatTijd(utcStr) {
+  if (!utcStr) return '';
+  return new Date(utcStr).toLocaleTimeString('nl-NL', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam',
+  });
+}
