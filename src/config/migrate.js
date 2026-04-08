@@ -49,7 +49,7 @@ async function run() {
       .filter(s => s.length > 0);
 
     for (const statement of statements) {
-      await db.execute(statement);
+      await db.query(statement);
     }
 
     await db.execute('INSERT INTO _migraties (bestandsnaam) VALUES (?)', [bestand]);
