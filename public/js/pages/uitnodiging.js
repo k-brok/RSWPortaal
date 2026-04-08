@@ -1,10 +1,11 @@
 // public/js/pages/uitnodiging.js — Account activeren via uitnodigingslink
 
-import { post }       from '../services/api.js';
-import { escapeHtml } from '../utils/escape.js';
+import { post }     from '../services/api.js';
+import { navigate } from '../utils/router.js';
+import { notify }   from '../utils/notify.js';
 
 function getToken() {
-  const params = new URLSearchParams(location.hash.split('?')[1] ?? '');
+  const params = new URLSearchParams(location.search);
   return params.get('token') ?? '';
 }
 
@@ -27,10 +28,6 @@ export function render() {
               <div class="auth-subtitle">Stel een eigen wachtwoord in om verder te gaan</div>
             </div>
 
-            <div id="ui-alert" style="display:none" class="alert alert-info">
-              <span class="alert-icon">ℹ️</span>
-              <span id="ui-alert-tekst"></span>
-            </div>
 
             <form id="ui-form" novalidate>
               <div class="form-group">
@@ -83,21 +80,12 @@ export function onMount() {
 
     try {
       const data = await post('/auth/wachtwoord-reset', { token, wachtwoord: ww });
-      toonAlert('success', `${data.message} Je wordt doorgestuurd naar de loginpagina...`);
+      notify.success(`${data.message} Je wordt doorgestuurd naar de loginpagina...`, 2500);
       document.getElementById('ui-form').style.display = 'none';
-      setTimeout(() => { location.hash = '#/login'; }, 2500);
+      setTimeout(() => { navigate('/login'); }, 2500);
     } catch (err) {
-      toonAlert('error', escapeHtml(err.message));
+      notify.error(err.message);
       btn.disabled = false; btn.textContent = 'Account activeren';
     }
   });
-}
-
-function toonAlert(type, tekst) {
-  const el   = document.getElementById('ui-alert');
-  const icon = { success: '✅', error: '❌' };
-  el.className = `alert alert-${type}`;
-  el.querySelector('.alert-icon').textContent = icon[type] ?? 'ℹ️';
-  document.getElementById('ui-alert-tekst').textContent = tekst;
-  el.style.display = 'flex';
 }

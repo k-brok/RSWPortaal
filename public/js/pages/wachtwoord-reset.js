@@ -1,10 +1,11 @@
 // public/js/pages/wachtwoord-reset.js — Nieuw wachtwoord instellen via reset-token
 
-import { post }       from '../services/api.js';
-import { escapeHtml } from '../utils/escape.js';
+import { post }     from '../services/api.js';
+import { navigate } from '../utils/router.js';
+import { notify }   from '../utils/notify.js';
 
 function getToken() {
-  const params = new URLSearchParams(location.hash.split('?')[1] ?? '');
+  const params = new URLSearchParams(location.search);
   return params.get('token') ?? '';
 }
 
@@ -15,7 +16,7 @@ export function render() {
          <div class="auth-wrapper"><div class="auth-card">
            <div class="alert alert-error"><span class="alert-icon">❌</span>
              <span>Ongeldige of verlopen resetlink. Vraag een nieuwe aan via
-               <a href="#/wachtwoord-vergeten">wachtwoord vergeten</a>.</span>
+               <a href="/wachtwoord-vergeten">wachtwoord vergeten</a>.</span>
            </div>
          </div></div>
        </div>`
@@ -26,11 +27,6 @@ export function render() {
               <div style="font-size:2.5rem">🔒</div>
               <div class="auth-title">Nieuw wachtwoord</div>
               <div class="auth-subtitle">Kies een sterk wachtwoord</div>
-            </div>
-
-            <div id="wr-alert" style="display:none" class="alert alert-info">
-              <span class="alert-icon">ℹ️</span>
-              <span id="wr-alert-tekst"></span>
             </div>
 
             <form id="wr-form" novalidate>
@@ -54,7 +50,7 @@ export function render() {
               </button>
             </form>
 
-            <div class="auth-footer"><a href="#/login">← Terug naar inloggen</a></div>
+            <div class="auth-footer"><a href="/login">← Terug naar inloggen</a></div>
           </div>
         </div>
       </div>`;
@@ -86,21 +82,13 @@ export function onMount() {
 
     try {
       const data = await post('/auth/wachtwoord-reset', { token, wachtwoord: ww });
-      toonAlert('success', `${data.message} Je wordt doorgestuurd...`);
+      notify.success(`${data.message} Je wordt doorgestuurd...`, 2500);
       document.getElementById('wr-form').style.display = 'none';
-      setTimeout(() => { location.hash = '#/login'; }, 2500);
+      setTimeout(() => { navigate('/login'); }, 2500);
     } catch (err) {
-      toonAlert('error', escapeHtml(err.message));
+      notify.error(err.message);
       btn.disabled = false; btn.textContent = 'Wachtwoord opslaan';
     }
   });
 }
 
-function toonAlert(type, tekst) {
-  const el   = document.getElementById('wr-alert');
-  const icon = { success: '✅', error: '❌' };
-  el.className = `alert alert-${type}`;
-  el.querySelector('.alert-icon').textContent = icon[type] ?? 'ℹ️';
-  document.getElementById('wr-alert-tekst').textContent = tekst;
-  el.style.display = 'flex';
-}

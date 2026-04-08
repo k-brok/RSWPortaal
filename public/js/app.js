@@ -114,8 +114,23 @@ async function init() {
   await handleRoute();
 }
 
-// Navigatie via hashchange
-window.addEventListener('hashchange', handleRoute);
+// Navigatie via History API
+window.addEventListener('popstate', handleRoute);
+
+// Globale klik-interceptor — vangt <a href="/pad"> op en gebruikt navigate()
+// zodat de pagina niet opnieuw geladen wordt.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a');
+  if (!a) return;
+  const href = a.getAttribute('href');
+  if (!href) return;
+  // Alleen interne paden (beginnen met '/'), geen externe URLs, geen modifier-toetsen
+  if (!href.startsWith('/') || href.startsWith('//')) return;
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (a.target === '_blank') return;
+  e.preventDefault();
+  import('./utils/router.js').then(({ navigate }) => navigate(href));
+});
 
 // Start
 init();
@@ -134,7 +149,7 @@ function buildNietBeschikbaar(pad, err) {
         Route: <code style="background:var(--color-surface-alt); padding:2px 6px; border-radius:4px;">${pad}</code>
       </p>
       ${detail}
-      <a href="#/" class="btn btn-primary">Terug naar home</a>
+      <a href="/" class="btn btn-primary">Terug naar home</a>
     </div>
   `;
 }

@@ -118,7 +118,7 @@ function buildPage() {
           </ul>
         </div>
         <div class="card-footer">
-          <a href="#/registreren?rol=vrijwilliger" class="btn btn-primary btn-sm">Aanmelden als vrijwilliger</a>
+          <a href="/registreren?rol=vrijwilliger" class="btn btn-primary btn-sm">Aanmelden als vrijwilliger</a>
         </div>
       </div>
 
@@ -144,8 +144,8 @@ function buildPage() {
           </p>
         </div>
         <div class="card-footer">
-          <a href="#/registreren" class="btn btn-ghost btn-sm">Account aanmaken</a>
-          <a href="#/login" class="btn btn-ghost btn-sm">Inloggen</a>
+          <a href="/registreren" class="btn btn-ghost btn-sm">Account aanmaken</a>
+          <a href="/login" class="btn btn-ghost btn-sm">Inloggen</a>
         </div>
       </div>
 

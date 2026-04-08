@@ -2,7 +2,8 @@
 
 import { get, post, put, del, patch } from '../services/api.js';
 import { escapeHtml } from '../utils/escape.js';
-import { getUser } from '../services/auth.js';
+import { getUser }    from '../services/auth.js';
+import { notify }     from '../utils/notify.js';
 import { drukScorekaartAf, drukAlleScorekaarten } from '../services/scorekaart-pdf.js';
 
 // ── State ──────────────────────────────────────────────────────────
@@ -11,6 +12,11 @@ let orgData       = null;  // { editie, fase, patrouilles }
 let groepen       = [];
 let openRijen     = new Set();
 let dragInfo      = null;
+
+// Filter state (org-view) — bewaard tussen her-renders
+let filterZoek     = '';
+let filterAanwezig = 'alle'; // 'alle' | 'aanwezig' | 'niet'
+let filterStatus   = 'alle'; // 'alle' | 'ok' | 'bm'
 
 function isOrg() {
   return ['admin', 'organisator'].includes(getUser()?.rol);
@@ -151,7 +157,7 @@ function bindLeidingEvents(fase, editie) {
       btn.disabled = true;
       btn.textContent = 'Laden…';
       try { await drukScorekaartAf(Number(btn.dataset.id)); }
-      catch (e) { alert('Fout bij genereren scorekaart: ' + e.message); }
+      catch (e) { notify.error('Fout bij genereren scorekaart: ' + e.message); }
       finally { btn.disabled = false; btn.innerHTML = '<span class="material-icons">print</span> Scorekaart'; }
     })
   );
@@ -219,7 +225,7 @@ function bindDeelnemerActies(patId, editie) {
       } else if (btn.dataset.actieD === 'verwijder') {
         if (!confirm(`Scout "${btn.dataset.naam}" verwijderen?`)) return;
         try { await del(`/inschrijving/deelnemers/${btn.dataset.dId}`); await laadDeelnemers(patId, editie); await herlaadBadge(patId); }
-        catch (e) { alert(e.message); }
+        catch (e) { notify.error(e.message); }
       }
     });
   });
@@ -248,7 +254,7 @@ function inlineBewerk(d, patId, editie) {
     if (!body.voornaam || !body.achternaam || !body.geboortedatum) return;
     bezig = true;
     try { await put(`/inschrijving/deelnemers/${d.id}`, body); await laadDeelnemers(patId, editie); await herlaadBadge(patId); }
-    catch (e) { bezig = false; alert(e.message); }
+    catch (e) { bezig = false; notify.error(e.message); }
   }
   [`ib-vn-${d.id}`,`ib-an-${d.id}`,`ib-gb-${d.id}`].forEach(id => {
     const el = document.getElementById(id);
@@ -292,7 +298,7 @@ function inlineNieuw(patId, editie) {
     if (!body.voornaam || !body.achternaam || !body.geboortedatum) return;
     bezig = true;
     try { await post(`/inschrijving/patrouilles/${patId}/deelnemers`, body); await laadDeelnemers(patId, editie); await herlaadBadge(patId); }
-    catch (e) { bezig = false; alert(e.message); }
+    catch (e) { bezig = false; notify.error(e.message); }
   }
   [`nb-vn-${patId}`,`nb-an-${patId}`,`nb-gb-${patId}`].forEach(id => {
     document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); slaOp(); } });
@@ -422,8 +428,9 @@ function renderOrgPagina() {
       <div class="empty-state-text">Geen actieve editie</div></div>`;
     return;
   }
-  const totScouts = patrouilles.reduce((s, p) => s + Number(p.aantal_deelnemers), 0);
-  const bmCount   = patrouilles.filter(p => p.buiten_mededinging).length;
+  const totScouts      = patrouilles.reduce((s, p) => s + Number(p.aantal_deelnemers), 0);
+  const bmCount        = patrouilles.filter(p => p.buiten_mededinging).length;
+  const aangemeldCount = patrouilles.filter(p => p.aangemeld_bij_start).length;
   el.innerHTML = `
     <div class="page-header">
       <h1>Inschrijvingen ${escapeHtml(editie.naam)}</h1>
@@ -438,6 +445,8 @@ function renderOrgPagina() {
       <div class="stat-chip"><strong>${patrouilles.filter(p=>p.jongste).length}</strong> jongste</div>
       ${bmCount ? `<div class="stat-chip" style="border-color:var(--color-warning)">
         <strong style="color:var(--color-warning)">${bmCount}</strong> ${escapeHtml(editie.bm_label ?? 'BM')}</div>` : ''}
+      <div class="stat-chip stat-chip-aanwezig" style="border-color:var(--color-success)">
+        <strong style="color:var(--color-success)">${aangemeldCount}</strong> / ${patrouilles.length} aanwezig</div>
     </div>
     <div class="card" style="margin-bottom:12px">
       <div style="padding:12px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -455,11 +464,43 @@ function renderOrgPagina() {
     </div>
     ${patrouilles.length === 0
       ? `<div class="empty-state"><div class="empty-state-icon"><span class="material-icons">person</span></div><div class="empty-state-text">Nog geen inschrijvingen</div></div>`
-      : `<div class="card"><table class="data-table" id="pat-tabel">
-          <thead><tr><th></th><th>Groep</th><th>Patrouille</th>
-            <th style="text-align:center">J</th><th style="text-align:center">Scouts</th>
-            <th>Status</th><th></th></tr></thead>
-          <tbody id="pat-tbody">${patrouilles.map(p => orgRijHtml(p, editie)).join('')}</tbody>
+      : `<div class="card filter-card filter-card--open" id="pat-filter-card" style="margin-bottom:12px">
+          <div class="filter-card-header" id="pat-filter-toggle">
+            <span style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:.9rem">
+              <span class="material-icons" style="font-size:1.1rem">filter_list</span> Filters
+            </span>
+            <span class="filter-card-pijl material-icons">expand_more</span>
+          </div>
+          <div class="filter-card-body">
+            <input type="search" id="filt-zoek" class="form-input" placeholder="Zoeken op patrouille of groep…" value="${escapeHtml(filterZoek)}">
+            <select id="filt-aanwezig" class="form-input">
+              <option value="alle"     ${filterAanwezig === 'alle'     ? 'selected' : ''}>Alle patrouilles</option>
+              <option value="aanwezig" ${filterAanwezig === 'aanwezig' ? 'selected' : ''}>Aanwezig</option>
+              <option value="niet"     ${filterAanwezig === 'niet'     ? 'selected' : ''}>Niet aanwezig</option>
+            </select>
+            <select id="filt-status" class="form-input">
+              <option value="alle" ${filterStatus === 'alle' ? 'selected' : ''}>Alle statussen</option>
+              <option value="ok"   ${filterStatus === 'ok'   ? 'selected' : ''}>OK</option>
+              <option value="bm"   ${filterStatus === 'bm'   ? 'selected' : ''}>Buiten mededinging</option>
+            </select>
+          </div>
+        </div>
+        <div class="card" style="overflow-x:auto"><table class="data-table" id="pat-tabel">
+          <thead><tr>
+            <th></th>
+            <th>Groep</th>
+            <th>Patrouille</th>
+            <th class="col-mobile-hide" style="text-align:center" title="Jongste patrouille">J</th>
+            <th style="text-align:center">Scouts</th>
+            <th>Status</th>
+            <th style="text-align:center" title="Aangemeld bij start RSW">Aanwezig</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="pat-tbody">${patrouilles.map(p => orgRijHtml(p, editie)).join('')}
+            <tr id="pat-geen-resultaten" style="display:none">
+              <td colspan="8" style="text-align:center;padding:24px;color:var(--color-text-muted)">Geen patrouilles gevonden voor dit filter</td>
+            </tr>
+          </tbody>
         </table></div>`}`;
   bindOrgPagina(editie);
 }
@@ -469,28 +510,41 @@ function orgRijHtml(p, editie) {
     ? `<span class="badge badge-warning" title="${escapeHtml(p.bm_reden ?? '')}">${escapeHtml(editie.bm_label ?? 'BM')}</span>`
     : '<span class="badge badge-success" style="font-size:.75rem">OK</span>';
   const open = openRijen.has(p.id);
+  const zoekTekst = `${p.naam} ${p.groep_naam}`.toLowerCase();
   return `
-    <tr class="pat-rij" data-pat-id="${p.id}" style="cursor:pointer">
+    <tr class="pat-rij" data-pat-id="${p.id}" style="cursor:pointer"
+        data-zoek="${escapeHtml(zoekTekst)}"
+        data-aangemeld="${p.aangemeld_bij_start ? '1' : '0'}"
+        data-bm="${p.buiten_mededinging ? '1' : '0'}">
       <td style="width:28px;text-align:center;color:var(--color-primary)">${open ? '<span class="material-icons" style="font-size:1rem">expand_more</span>' : '<span class="material-icons" style="font-size:1rem">chevron_right</span>'}</td>
       <td>${escapeHtml(p.groep_naam)}</td>
-      <td><strong>${escapeHtml(p.naam)}</strong></td>
-      <td style="text-align:center">${p.jongste ? '✓' : ''}</td>
+      <td data-groep="${escapeHtml(p.groep_naam)}"><strong>${escapeHtml(p.naam)}</strong></td>
+      <td class="col-mobile-hide" style="text-align:center">${p.jongste ? '✓' : ''}</td>
       <td style="text-align:center">${p.aantal_deelnemers}</td>
       <td>${bm}${p.bm_reden ? `<br><small class="text-muted">${escapeHtml(p.bm_reden)}</small>` : ''}</td>
+      <td style="text-align:center" onclick="event.stopPropagation()">
+        <input type="checkbox" class="chk-aangemeld" data-id="${p.id}"
+          ${p.aangemeld_bij_start ? 'checked' : ''}
+          title="Aangemeld bij start RSW"
+          style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary)">
+      </td>
       <td><div style="display:flex;gap:4px" onclick="event.stopPropagation()">
         <button class="btn btn-sm btn-ghost" data-actie="scorekaart" data-id="${p.id}" title="Scorekaart printen"><span class="material-icons">print</span></button>
-        <button class="btn btn-sm btn-outline" data-actie="bewerk" data-id="${p.id}">Bewerk</button>
-        <button class="btn btn-sm btn-danger" data-actie="verwijder" data-id="${p.id}">Verwijder</button>
+        <button class="btn btn-sm btn-ghost" data-actie="bewerk" data-id="${p.id}" title="Bewerken"><span class="material-icons">edit</span></button>
+        <button class="btn btn-sm btn-danger" data-actie="verwijder" data-id="${p.id}" title="Verwijderen"><span class="material-icons">delete</span></button>
       </div></td>
     </tr>
     <tr class="detail-rij" data-pat-id="${p.id}" style="${open ? '' : 'display:none'}">
-      <td colspan="7" style="padding:0 0 0 40px;background:var(--color-surface-alt)">
+      <td colspan="8" style="padding:0 0 0 40px;background:var(--color-surface-alt)">
         <div id="detail-${p.id}" style="padding:12px 12px 12px 0">${open ? '<em class="text-muted">Laden…</em>' : ''}</div>
       </td>
     </tr>`;
 }
 
 function bindOrgPagina(editie) {
+  bindFilters();
+  pasFilterToe();
+
   document.getElementById('btn-nieuw-pat')?.addEventListener('click', () => openOrgPatModal(null, editie.id));
 
   const btnAlle = document.getElementById('btn-alle-scorekaarten');
@@ -532,6 +586,27 @@ function bindOrgPagina(editie) {
       e.preventDefault(); e.stopPropagation(); detRij.style.outline = '';
       if (!dragInfo || dragInfo.sourcePatId === targetPatId) return;
       await doeVerplaats(dragInfo.deelnemerId, dragInfo.sourcePatId, targetPatId, editie);
+    });
+  });
+
+  document.querySelectorAll('.chk-aangemeld').forEach(chk => {
+    chk.addEventListener('change', async () => {
+      const id = Number(chk.dataset.id);
+      const waarde = chk.checked;
+      chk.disabled = true;
+      try {
+        await patch(`/admin/inschrijvingen/patrouilles/${id}/aangemeld`, { aangemeld_bij_start: waarde });
+        const p = orgData.patrouilles.find(x => x.id === id);
+        if (p) p.aangemeld_bij_start = waarde ? 1 : 0;
+        // Data-attribuut bijwerken voor filter
+        chk.closest('.pat-rij')?.setAttribute('data-aangemeld', waarde ? '1' : '0');
+        updateAangemeldChip();
+        pasFilterToe();
+      } catch (e) {
+        chk.checked = !waarde;
+        toonBericht('error', e.message);
+      }
+      chk.disabled = false;
     });
   });
 
@@ -730,6 +805,59 @@ function orgInlineNieuw(patId, editie) {
   });
 }
 
+function bindFilters() {
+  document.getElementById('filt-zoek')?.addEventListener('input', e => {
+    filterZoek = e.target.value;
+    pasFilterToe();
+  });
+  document.getElementById('filt-aanwezig')?.addEventListener('change', e => {
+    filterAanwezig = e.target.value;
+    pasFilterToe();
+  });
+  document.getElementById('filt-status')?.addEventListener('change', e => {
+    filterStatus = e.target.value;
+    pasFilterToe();
+  });
+
+  // Inklapbaar op mobiel
+  document.getElementById('pat-filter-toggle')?.addEventListener('click', () => {
+    document.getElementById('pat-filter-card')?.classList.toggle('filter-card--open');
+  });
+}
+
+function pasFilterToe() {
+  const zoekLower = filterZoek.toLowerCase();
+  let zichtbaar = 0;
+  document.querySelectorAll('.pat-rij').forEach(rij => {
+    const zoekMatch   = !zoekLower || (rij.dataset.zoek ?? '').includes(zoekLower);
+    const aangemeld   = rij.dataset.aangemeld === '1';
+    const isBm        = rij.dataset.bm === '1';
+    const aanwezigOk  = filterAanwezig === 'alle'
+      || (filterAanwezig === 'aanwezig' && aangemeld)
+      || (filterAanwezig === 'niet' && !aangemeld);
+    const statusOk    = filterStatus === 'alle'
+      || (filterStatus === 'ok' && !isBm)
+      || (filterStatus === 'bm' && isBm);
+    const toon = zoekMatch && aanwezigOk && statusOk;
+
+    rij.style.display = toon ? '' : 'none';
+    const patId = Number(rij.dataset.patId);
+    const detailRij = document.querySelector(`.detail-rij[data-pat-id="${patId}"]`);
+    if (detailRij) detailRij.style.display = toon && openRijen.has(patId) ? '' : 'none';
+    if (toon) zichtbaar++;
+  });
+
+  const geenResultaten = document.getElementById('pat-geen-resultaten');
+  if (geenResultaten) geenResultaten.style.display = zichtbaar === 0 ? '' : 'none';
+}
+
+function updateAangemeldChip() {
+  const chip = document.querySelector('.stat-chip-aanwezig');
+  if (!chip || !orgData) return;
+  const aangemeldCount = orgData.patrouilles.filter(p => p.aangemeld_bij_start).length;
+  chip.innerHTML = `<strong style="color:var(--color-success)">${aangemeldCount}</strong> / ${orgData.patrouilles.length} aanwezig`;
+}
+
 async function herlaadOrgTeller(patId) {
   try {
     const vers = await get('/admin/inschrijvingen');
@@ -902,7 +1030,7 @@ function openConfirmDialog(titel, html, onBevestig) {
     const btn = document.getElementById('inschrijving-confirm-ok');
     btn.disabled = true;
     try { await onBevestig(); sluit(); }
-    catch (e) { alert(e.message); }
+    catch (e) { notify.error(e.message); }
     btn.disabled = false;
   };
 }

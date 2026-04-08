@@ -104,7 +104,7 @@ async function stuurVerificatieMail(aan, naam, token) {
 }
 
 async function stuurWachtwoordResetMail(aan, naam, token) {
-  const link = `${APP_URL}/#/wachtwoord-reset?token=${token}`;
+  const link = `${APP_URL}/wachtwoord-reset?token=${token}`;
   await stuurMail({
     aan,
     onderwerp: 'Wachtwoord opnieuw instellen — RSW Portaal',
@@ -117,7 +117,7 @@ async function stuurWachtwoordResetMail(aan, naam, token) {
 }
 
 async function stuurEmailWijzigMail(aan, naam, token) {
-  const link = `${APP_URL}/#/email-bevestigen?token=${token}`;
+  const link = `${APP_URL}/email-bevestigen?token=${token}`;
   await stuurMail({
     aan,
     onderwerp: 'Bevestig je nieuwe e-mailadres — RSW Portaal',
@@ -130,7 +130,7 @@ async function stuurEmailWijzigMail(aan, naam, token) {
 }
 
 async function stuurUitnodigingsMail(aan, naam, token) {
-  const link = `${APP_URL}/#/uitnodiging?token=${token}`;
+  const link = `${APP_URL}/uitnodiging?token=${token}`;
   await stuurMail({
     aan,
     onderwerp: 'Welkom bij RSW Portaal — activeer je account',
@@ -155,7 +155,7 @@ async function stuurNieuweAanvraagMail(aan, aanvragerNaam, type, extra) {
       <p><strong>Naam:</strong> ${aanvragerNaam}</p>
       <p><strong>Type:</strong> ${typeLabel}</p>
       ${extraRegel}
-      <a href="${APP_URL}/#/organisator/aanvragen"
+      <a href="${APP_URL}/organisator/aanvragen"
          style="display:inline-block;background:#e94560;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
         Aanvraag bekijken
       </a>`),
@@ -172,7 +172,7 @@ async function stuurAanvraagGoedgekeurdMail(aan, naam, rolOfGroep) {
       <p>Goed nieuws! Je aanvraag is goedgekeurd.</p>
       <p><strong>Toegewezen:</strong> ${rolOfGroep}</p>
       <p>Je kunt nu inloggen en aan de slag.</p>
-      <a href="${APP_URL}/#/login"
+      <a href="${APP_URL}/login"
          style="display:inline-block;background:#e94560;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
         Inloggen
       </a>`),

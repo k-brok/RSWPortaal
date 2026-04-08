@@ -1,6 +1,7 @@
 // organisator/vrijwilligers.js — Gecombineerde vrijwilligers- en vacaturesbeheer pagina
 
 import { get, post, put, patch, del } from '../../services/api.js';
+import { notify }                     from '../../utils/notify.js';
 
 // ── State ─────────────────────────────────────────────────────────
 
@@ -157,7 +158,7 @@ function bindAanmeldingenEvents() {
         renderAanmeldingen();
       } catch (e) {
         sel.value = origineel;
-        alert(e.message);
+        notify.error(e.message);
       }
     });
   });
@@ -172,7 +173,7 @@ function bindAanmeldingenEvents() {
         vrijwData.vrijwilligers = vrijwData.vrijwilligers.filter(v => v.id !== id);
         renderAanmeldingen();
       } catch (e) {
-        alert(e.message);
+        notify.error(e.message);
       }
     });
   });
@@ -277,7 +278,7 @@ function bindVacatureEvents() {
         vacData.vacatures = vacData.vacatures.filter(v => v.id !== vac.id);
         renderVacatures();
       } catch (e) {
-        alert(e.message);
+        notify.error(e.message);
       }
     });
   });

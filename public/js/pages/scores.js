@@ -12,7 +12,7 @@ import { laadSocketScript, maakSocket } from '../services/socket.js';
 let socket = null;
 
 function getMomentId() {
-  const params = new URLSearchParams(location.hash.split('?')[1] || '');
+  const params = new URLSearchParams(location.search);
   return params.get('moment_id') ? Number(params.get('moment_id')) : null;
 }
 
@@ -380,7 +380,7 @@ function renderLiveOvrzicht(momentId) {
   document.getElementById('content').innerHTML = `
     <div class="page-header">
       <h1><span class="material-icons">leaderboard</span> Live scores</h1>
-      <a href="#/organisator/jury" class="btn btn-outline"><span class="material-icons">arrow_back</span> Terug naar jury</a>
+      <a href="/organisator/jury" class="btn btn-outline"><span class="material-icons">arrow_back</span> Terug naar jury</a>
     </div>
     <div id="scores-content"><p class="text-muted">Laden…</p></div>
   `;

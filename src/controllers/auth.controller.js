@@ -97,8 +97,8 @@ async function registreer(req, res) {
 // GET /api/auth/verifieer/:token
 async function verifieerEmail(req, res) {
   const ok = await gebruikerModel.verifieeren(req.params.token);
-  if (!ok) return res.redirect(`${process.env.APP_URL || ''}/#/login?verificatie=mislukt`);
-  res.redirect(`${process.env.APP_URL || ''}/#/login?verificatie=gelukt`);
+  if (!ok) return res.redirect(`${process.env.APP_URL || ''}/login?verificatie=mislukt`);
+  res.redirect(`${process.env.APP_URL || ''}/login?verificatie=gelukt`);
 }
 
 // POST /api/auth/login

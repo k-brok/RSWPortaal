@@ -95,6 +95,20 @@ router.put('/patrouilles/:id', beheerder, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+router.patch('/patrouilles/:id/aangemeld', beheerder, async (req, res) => {
+  const { aangemeld_bij_start } = req.body;
+  if (typeof aangemeld_bij_start !== 'boolean')
+    return res.status(400).json({ message: 'aangemeld_bij_start (boolean) is verplicht' });
+  try {
+    const [r] = await db.execute(
+      'UPDATE patrouilles SET aangemeld_bij_start=? WHERE id=?',
+      [aangemeld_bij_start ? 1 : 0, Number(req.params.id)]
+    );
+    if (r.affectedRows === 0) return res.status(404).json({ message: 'Niet gevonden' });
+    res.json({ ok: true, aangemeld_bij_start });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 router.delete('/patrouilles/:id', beheerder, async (req, res) => {
   try {
     const ok = await patModel.verwijder(Number(req.params.id));

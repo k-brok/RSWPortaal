@@ -51,7 +51,7 @@ function buildHeader() {
         <button class="btn-icon" id="sidebar-toggle" title="Menu in-/uitklappen" aria-label="Menu toggle">
           <span class="material-icons">menu</span>
         </button>
-        <a href="#/" class="header-logo">
+        <a href="/" class="header-logo">
           <span>RSW Portaal</span>
         </a>
       </div>
@@ -81,7 +81,7 @@ function buildUserMenu(user) {
         <div class="dropdown-user-rol">${rolLabel}</div>
       </div>
       <hr class="dropdown-divider" />
-      <a href="#/profiel" class="dropdown-item"><span class="material-icons">manage_accounts</span> Mijn profiel</a>
+      <a href="/profiel" class="dropdown-item"><span class="material-icons">manage_accounts</span> Mijn profiel</a>
       <hr class="dropdown-divider" />
       <button class="dropdown-item dropdown-item-danger" id="logout-btn"><span class="material-icons">logout</span> Uitloggen</button>
     </div>
@@ -90,8 +90,8 @@ function buildUserMenu(user) {
 
 function buildGuestMenu() {
   return `
-    <a href="#/login" class="btn btn-ghost btn-sm">Inloggen</a>
-    <a href="#/registreren" class="btn btn-primary btn-sm">Registreren</a>
+    <a href="/login" class="btn btn-ghost btn-sm">Inloggen</a>
+    <a href="/registreren" class="btn btn-primary btn-sm">Registreren</a>
   `;
 }
 
@@ -130,7 +130,7 @@ function bindHeaderEvents(el) {
   // Uitloggen
   el.querySelector('#logout-btn')?.addEventListener('click', async () => {
     await logout();
-    navigate('#/');
+    navigate('/');
   });
 }
 

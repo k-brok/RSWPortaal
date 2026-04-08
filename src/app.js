@@ -106,11 +106,17 @@ app.use('/api/admin/rally',         require('./routes/admin.rally.routes'));
 app.use('/api/admin/versie',        require('./routes/admin.versie.routes'));
 
 // ── SPA fallback ──────────────────────────────────────────────────
+// Injecteer <base href> zodat relatieve paden in index.html correct blijven
+// bij directe toegang tot diepe routes zoals /admin/gebruikers.
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/') || req.path.match(/\.(js|css|png|jpg|svg|ico|woff2?)$/)) {
     return res.status(404).json({ message: `Niet gevonden: ${req.path}` });
   }
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  const filePath = path.join(__dirname, '..', 'public', 'index.html');
+  const html = fs.readFileSync(filePath, 'utf8')
+    .replace('<head>', `<head>\n  <base href="${BASE_PATH}/">`);
+  res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+  res.send(html);
 });
 
 server.listen(PORT, () => {

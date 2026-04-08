@@ -17,7 +17,7 @@ let statusLabel = null;
 let retryTimer  = null;
 
 function getToken() {
-  const params = new URLSearchParams(location.hash.split('?')[1] || '');
+  const params = new URLSearchParams(location.search);
   return params.get('token') || null;
 }
 

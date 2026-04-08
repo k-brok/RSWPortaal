@@ -2,6 +2,7 @@
 
 import { get, post, put, del } from '../../services/api.js';
 import { escapeHtml } from '../../utils/escape.js';
+import { navigate } from '../../utils/router.js';
 import { naarUTC, naarLocalDT } from '../../utils/datum.js';
 
 let editieId   = null;
@@ -311,7 +312,7 @@ function renderQrInhoud(id, _m) {
         momentId:  Number(btn.dataset.momentId),
         subkampId: Number(btn.dataset.subkampId),
       }));
-      location.hash = '#/scores';
+      navigate('/scores');
     });
   });
 }

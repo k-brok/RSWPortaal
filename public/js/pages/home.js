@@ -128,9 +128,9 @@ function buildHero(editie, loggedIn) {
 
       ${!loggedIn ? `
         <div class="hero-actions">
-          <a href="#/registreren?rol=leiding" class="btn btn-primary">Meld je aan als leiding</a>
-          <a href="#/registreren?rol=vrijwilliger" class="btn btn-secondary">Meld je aan als vrijwilliger</a>
-          <a href="#/login" class="btn btn-ghost">Inloggen</a>
+          <a href="/registreren?rol=leiding" class="btn btn-primary">Meld je aan als leiding</a>
+          <a href="/registreren?rol=vrijwilliger" class="btn btn-secondary">Meld je aan als vrijwilliger</a>
+          <a href="/login" class="btn btn-ghost">Inloggen</a>
         </div>
       ` : ''}
 
@@ -195,33 +195,33 @@ function getActiesVoorRol(rol) {
   const mi = n => `<span class="material-icons">${n}</span>`;
   const map = {
     leiding: [
-      { href: '#/inschrijvingen', icoon: mi('assignment'), label: 'Inschrijving & eerdere edities' },
-      { href: '#/uitslagen',      icoon: mi('emoji_events'), label: 'Uitslagen bekijken' },
+      { href: '/inschrijvingen', icoon: mi('assignment'), label: 'Inschrijving & eerdere edities' },
+      { href: '/uitslagen',      icoon: mi('emoji_events'), label: 'Uitslagen bekijken' },
     ],
     vrijwilliger: [
-      { href: '#/vrijwilliger/inschrijving', icoon: mi('volunteer_activism'), label: 'Mijn inschrijving' },
-      { href: '#/programma',                 icoon: mi('event'), label: 'Programma' },
+      { href: '/vrijwilliger/inschrijving', icoon: mi('volunteer_activism'), label: 'Mijn inschrijving' },
+      { href: '/programma',                 icoon: mi('event'), label: 'Programma' },
     ],
     jury: [
-      { href: '#/scoreformulier', icoon: mi('rate_review'), label: 'Scores invoeren' },
-      { href: '#/scores',         icoon: mi('leaderboard'), label: 'Live scores' },
+      { href: '/scoreformulier', icoon: mi('rate_review'), label: 'Scores invoeren' },
+      { href: '/scores',         icoon: mi('leaderboard'), label: 'Live scores' },
     ],
     spelbegeleider: [
-      { href: '#/scoreformulier', icoon: mi('groups'), label: 'Mijn categorie' },
-      { href: '#/scores',         icoon: mi('leaderboard'), label: 'Live scoretabel' },
+      { href: '/scoreformulier', icoon: mi('groups'), label: 'Mijn categorie' },
+      { href: '/scores',         icoon: mi('leaderboard'), label: 'Live scoretabel' },
     ],
     organisator: [
-      { href: '#/edities',                 icoon: mi('flag'), label: 'Edities' },
-      { href: '#/inschrijvingen',          icoon: mi('content_paste'), label: 'Inschrijvingen' },
-      { href: '#/organisator/plattegrond', icoon: mi('map'), label: 'Plattegrond' },
-      { href: '#/scores',                  icoon: mi('leaderboard'), label: 'Scorebeheer' },
+      { href: '/edities',                 icoon: mi('flag'), label: 'Edities' },
+      { href: '/inschrijvingen',          icoon: mi('content_paste'), label: 'Inschrijvingen' },
+      { href: '/organisator/plattegrond', icoon: mi('map'), label: 'Plattegrond' },
+      { href: '/scores',                  icoon: mi('leaderboard'), label: 'Scorebeheer' },
     ],
     admin: [
-      { href: '#/edities',                 icoon: mi('flag'), label: 'Edities' },
-      { href: '#/admin/gebruikers',        icoon: mi('person'), label: 'Gebruikers' },
-      { href: '#/admin/verenigingen',      icoon: mi('location_city'), label: 'Verenigingen' },
-      { href: '#/organisator/categorieen', icoon: mi('category'), label: 'Categorieën' },
-      { href: '#/scores',                  icoon: mi('leaderboard'), label: 'Scorebeheer' },
+      { href: '/edities',                 icoon: mi('flag'), label: 'Edities' },
+      { href: '/admin/gebruikers',        icoon: mi('person'), label: 'Gebruikers' },
+      { href: '/admin/verenigingen',      icoon: mi('location_city'), label: 'Verenigingen' },
+      { href: '/organisator/categorieen', icoon: mi('category'), label: 'Categorieën' },
+      { href: '/scores',                  icoon: mi('leaderboard'), label: 'Scorebeheer' },
     ],
   };
   return map[rol] ?? [];
@@ -252,7 +252,7 @@ function buildTop10Card(top10, editie) {
       </div>
       ${gepubliceerd ? `
         <div class="card-footer">
-          <a href="#/uitslagen" class="btn btn-ghost btn-sm">Volledige uitslag &rarr;</a>
+          <a href="/uitslagen" class="btn btn-ghost btn-sm">Volledige uitslag &rarr;</a>
         </div>
       ` : ''}
     </div>
@@ -302,7 +302,7 @@ function buildProgrammaCard(programma, editie) {
       </div>
       ${programma.length ? `
         <div class="card-footer">
-          <a href="#/programma" class="btn btn-ghost btn-sm">Volledig programma &rarr;</a>
+          <a href="/programma" class="btn btn-ghost btn-sm">Volledig programma &rarr;</a>
         </div>
       ` : ''}
     </div>
@@ -430,11 +430,11 @@ function buildVacaturesCard(vacatures, loggedIn) {
       </div>
       ${!loggedIn ? `
         <div class="card-footer">
-          <a href="#/registreren?rol=vrijwilliger" class="btn btn-primary btn-sm">Aanmelden als vrijwilliger &rarr;</a>
+          <a href="/registreren?rol=vrijwilliger" class="btn btn-primary btn-sm">Aanmelden als vrijwilliger &rarr;</a>
         </div>
       ` : `
         <div class="card-footer">
-          <a href="#/vrijwilliger/inschrijving" class="btn btn-primary btn-sm">Mijn inschrijving &rarr;</a>
+          <a href="/vrijwilliger/inschrijving" class="btn btn-primary btn-sm">Mijn inschrijving &rarr;</a>
         </div>
       `}
     </div>
@@ -456,7 +456,7 @@ function buildRolCards(user) {
           ${buildLegeStaat('<span class="material-icons">content_paste</span>', 'Laden...')}
         </div>
         <div class="card-footer">
-          <a href="#/inschrijvingen" class="btn btn-primary btn-sm"><span class="material-icons">add</span> Inschrijving</a>
+          <a href="/inschrijvingen" class="btn btn-primary btn-sm"><span class="material-icons">add</span> Inschrijving</a>
         </div>
       </div>
     `);
@@ -472,7 +472,7 @@ function buildRolCards(user) {
           <p class="text-muted text-sm">Je bent ingedeeld als jurylid. Ga naar het scoreformulier om scores in te voeren.</p>
         </div>
         <div class="card-footer">
-          <a href="#/scoreformulier" class="btn btn-primary btn-sm">Scoreformulier openen</a>
+          <a href="/scoreformulier" class="btn btn-primary btn-sm">Scoreformulier openen</a>
         </div>
       </div>
     `);
@@ -488,8 +488,8 @@ function buildRolCards(user) {
           <p class="text-muted text-sm">Bekijk de live scores van alle patrouilles in jouw categorie.</p>
         </div>
         <div class="card-footer">
-          <a href="#/scoreformulier" class="btn btn-primary btn-sm">Naar mijn categorie</a>
-          <a href="#/scores" class="btn btn-ghost btn-sm">Live scores</a>
+          <a href="/scoreformulier" class="btn btn-primary btn-sm">Naar mijn categorie</a>
+          <a href="/scores" class="btn btn-ghost btn-sm">Live scores</a>
         </div>
       </div>
     `);
@@ -508,9 +508,9 @@ function buildRolCards(user) {
           </div>
         </div>
         <div class="card-footer">
-          <a href="#/edities" class="btn btn-primary btn-sm"><span class="material-icons">flag</span> Edities</a>
-          <a href="#/inschrijvingen" class="btn btn-ghost btn-sm">Inschrijvingen</a>
-          <a href="#/scores" class="btn btn-ghost btn-sm">Scorebeheer</a>
+          <a href="/edities" class="btn btn-primary btn-sm"><span class="material-icons">flag</span> Edities</a>
+          <a href="/inschrijvingen" class="btn btn-ghost btn-sm">Inschrijvingen</a>
+          <a href="/scores" class="btn btn-ghost btn-sm">Scorebeheer</a>
         </div>
       </div>
     `);
@@ -560,7 +560,7 @@ function buildInfoCard() {
         </p>
       </div>
       <div class="card-footer">
-        <a href="#/over" class="btn btn-ghost btn-sm">Meer informatie &rarr;</a>
+        <a href="/over" class="btn btn-ghost btn-sm">Meer informatie &rarr;</a>
       </div>
     </div>
   `;

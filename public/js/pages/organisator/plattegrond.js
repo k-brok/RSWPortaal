@@ -3,6 +3,7 @@
 
 import { get, put, post, del } from '../../services/api.js';
 import { escapeHtml }          from '../../utils/escape.js';
+import { notify }              from '../../utils/notify.js';
 import { PlattegrondCanvas }   from './plattegrond-canvas.js';
 import { laadPdfMake }         from '../../services/pdf.js';
 
@@ -656,7 +657,7 @@ function bindUIEvents() {
     try {
       await put(`/plattegrond/${editieId}/instellingen`,
         { breedte: canvasB, hoogte: canvasH, snap_grootte, def_cel_w, def_cel_h, schaal_meter, bg_opacity });
-    } catch { /* stil */ }
+    } catch { /* stil — instelling niet kritiek */ }
   });
 
   // Achtergrond
@@ -693,14 +694,14 @@ function bindUIEvents() {
         await post(`/plattegrond/${editieId}/afbeelding`, { afbeelding: base64 });
         await put(`/plattegrond/${editieId}/instellingen`,
           { breedte: canvasB, hoogte: canvasH, snap_grootte, def_cel_w, def_cel_h, schaal_meter, bg_opacity });
-      } catch (err) { alert('Fout bij uploaden: ' + err.message); }
+      } catch (err) { notify.error('Fout bij uploaden: ' + err.message); }
       finally { btn.textContent = '&#128247; Afbeelding'; btn.disabled = false; }
     };
     reader.readAsDataURL(file);
   });
   document.getElementById('btn-afb-verwijderen').addEventListener('click', async () => {
     await canvas.setAfbeelding(null);
-    try { await del(`/plattegrond/${editieId}/afbeelding`); } catch { /* stil */ }
+    try { await del(`/plattegrond/${editieId}/afbeelding`); } catch { /* stil — visueel al verwijderd */ }
     document.getElementById('btn-afb-verwijderen').style.display = 'none';
     document.getElementById('afb-info').style.display = 'none';
     document.getElementById('afb-upload').value = '';
@@ -717,7 +718,7 @@ function bindUIEvents() {
       canvas.setCellen(c2);
       await put(`/plattegrond/${editieId}/cellen`, { cellen: canvas.getCellen() });
       await herlaad();
-    } catch (e) { alert('Fout: ' + e.message); }
+    } catch (e) { notify.error('Fout bij auto-indeling: ' + e.message); }
     btn.disabled = false; btn.textContent = '⚙️ Auto-indeling';
   });
 
@@ -727,7 +728,7 @@ function bindUIEvents() {
       canvas.setCellen(cellen);
       await put(`/plattegrond/${editieId}/cellen`, { cellen });
       await herlaad();
-    } catch (e) { alert('Fout: ' + e.message); }
+    } catch (e) { notify.error('Fout bij opslaan: ' + e.message); }
   });
 
   // Nummers aanpassen modal
@@ -776,7 +777,7 @@ async function slaaNummersOp() {
   });
   canvas.setCellen(cellen);
   sluitNummersModal();
-  try { await put(`/plattegrond/${editieId}/cellen`, { cellen }); } catch { /* stil */ }
+  try { await put(`/plattegrond/${editieId}/cellen`, { cellen }); } catch (e) { notify.warning('Nummers niet opgeslagen: ' + e.message); }
   updateIndelingKaart();
 }
 
@@ -848,7 +849,7 @@ async function printPlattegrond() {
       },
     }).download('plattegrond-rsw.pdf');
   } catch (e) {
-    alert('Fout bij genereren PDF: ' + e.message);
+    notify.error('Fout bij genereren PDF: ' + e.message);
   } finally {
     btn.disabled = false; btn.textContent = '🖨 PDF';
   }
@@ -859,6 +860,6 @@ async function printPlattegrond() {
 function debouncedOpslaan(cellen) {
   if (slaOpTimer) clearTimeout(slaOpTimer);
   slaOpTimer = setTimeout(async () => {
-    try { await put(`/plattegrond/${editieId}/cellen`, { cellen }); } catch { /* stil */ }
+    try { await put(`/plattegrond/${editieId}/cellen`, { cellen }); } catch { /* stil — debounce, volgende poging volgt */ }
   }, 1500);
 }

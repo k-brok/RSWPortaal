@@ -1,7 +1,7 @@
 // public/js/pages/wachtwoord-vergeten.js
 
-import { post }       from '../services/api.js';
-import { escapeHtml } from '../utils/escape.js';
+import { post }   from '../services/api.js';
+import { notify } from '../utils/notify.js';
 
 export function render() {
   document.getElementById('content').innerHTML = `
@@ -12,11 +12,6 @@ export function render() {
             <div style="font-size:2.5rem">🔑</div>
             <div class="auth-title">Wachtwoord vergeten</div>
             <div class="auth-subtitle">Vul je e-mailadres in om een resetlink te ontvangen</div>
-          </div>
-
-          <div id="wv-alert" style="display:none" class="alert alert-info">
-            <span class="alert-icon">ℹ️</span>
-            <span id="wv-alert-tekst"></span>
           </div>
 
           <form id="wv-form" novalidate>
@@ -31,7 +26,7 @@ export function render() {
           </form>
 
           <div class="auth-footer">
-            <a href="#/login">← Terug naar inloggen</a>
+            <a href="/login">← Terug naar inloggen</a>
           </div>
         </div>
       </div>
@@ -50,21 +45,12 @@ export function onMount() {
 
     try {
       const data = await post('/auth/wachtwoord-vergeten', { email });
-      toonAlert('success', data.message);
+      notify.success(data.message);
       document.getElementById('wv-form').style.display = 'none';
     } catch (err) {
-      toonAlert('error', escapeHtml(err.message));
+      notify.error(err.message);
       btn.disabled = false;
       btn.textContent = 'Resetlink versturen';
     }
   });
-}
-
-function toonAlert(type, tekst) {
-  const el   = document.getElementById('wv-alert');
-  const icon = { success: '✅', error: '❌', info: 'ℹ️' };
-  el.className = `alert alert-${type}`;
-  el.querySelector('.alert-icon').textContent = icon[type] ?? 'ℹ️';
-  document.getElementById('wv-alert-tekst').textContent = tekst;
-  el.style.display = 'flex';
 }

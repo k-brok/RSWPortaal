@@ -106,6 +106,7 @@ function buildSidebar() {
         navItem('/inschrijvingen', 'assignment', 'Inschrijvingen'),
         navItem('/organisator/aanvragen', 'inbox', 'Aanvragen'),
         navItem('/organisator/vrijwilligers', 'volunteer_activism', 'Vrijwilligers'),
+        navItem('/organisator/catering', 'restaurant', 'Catering'),
       ]),
       navSubGroup('org-locatie', 'location_on', 'Locatie', [
         navItem('/organisator/subkampen', 'holiday_village', 'Subkampen'),
@@ -120,7 +121,6 @@ function buildSidebar() {
       navSubGroup('org-rally', 'directions_bike', 'Rally', [
         navItem('/organisator/rally-beheer', 'push_pin', 'Rally beheer'),
         navItem('/organisator/rally-tracking', 'leaderboard', 'Rally tracking'),
-        navItem('/organisator/catering', 'restaurant', 'Catering'),
       ]),
     ]));
   }
@@ -146,7 +146,7 @@ function buildSidebar() {
 
 function navItem(route, icon, label) {
   return `
-    <a href="#${route}" class="nav-item" data-route="${route}">
+    <a href="${route}" class="nav-item" data-route="${route}">
       <span class="nav-item-icon"><span class="material-icons">${icon}</span></span>
       <span class="nav-item-label">${label}</span>
     </a>
@@ -302,8 +302,7 @@ function bindSidebarEvents(el) {
 }
 
 export function setActiveNavItem() {
-  const hash = location.hash.slice(1) || '/';
-  const route = hash.startsWith('/') ? hash : '/' + hash;
+  const route = location.pathname || '/';
 
   document.querySelectorAll('.nav-item[data-route]').forEach(item => {
     const itemRoute = item.dataset.route;

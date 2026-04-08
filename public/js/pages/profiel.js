@@ -2,12 +2,12 @@
 
 import { get, post }  from '../services/api.js';
 import { getUser }    from '../services/auth.js';
-import { escapeHtml } from '../utils/escape.js';
 import { navigate }   from '../utils/router.js';
+import { notify }     from '../utils/notify.js';
 
 export async function render() {
   const user = getUser();
-  if (!user) { navigate('#/login'); return; }
+  if (!user) { navigate('/login'); return; }
 
   document.getElementById('content').innerHTML = `
     <div class="page-header">
@@ -43,9 +43,6 @@ export async function render() {
           <div class="card-title"><span class="card-icon">🔒</span> Wachtwoord wijzigen</div>
         </div>
         <div class="card-body">
-          <div id="ww-alert" style="display:none" class="alert alert-info mb-16">
-            <span class="alert-icon">ℹ️</span><span id="ww-alert-tekst"></span>
-          </div>
           <form id="ww-form" novalidate>
             <div class="form-group">
               <label class="form-label" for="ww-huidig">Huidig wachtwoord</label>
@@ -73,9 +70,6 @@ export async function render() {
           <div class="card-title"><span class="card-icon">✉️</span> E-mailadres wijzigen</div>
         </div>
         <div class="card-body">
-          <div id="em-alert" style="display:none" class="alert alert-info mb-16">
-            <span class="alert-icon">ℹ️</span><span id="em-alert-tekst"></span>
-          </div>
           <form id="em-form" novalidate>
             <div class="form-group">
               <label class="form-label" for="em-nieuw">Nieuw e-mailadres</label>
@@ -126,9 +120,9 @@ export async function onMount() {
     btn.disabled = true; btn.textContent = 'Opslaan...';
     try {
       const data = await post('/profiel/wachtwoord-wijzigen', { huidig_wachtwoord: huidig, nieuw_wachtwoord: nieuw });
-      toonAlert('ww', 'success', data.message);
+      notify.success(data.message);
       document.getElementById('ww-form').reset();
-    } catch (err) { toonAlert('ww', 'error', escapeHtml(err.message)); }
+    } catch (err) { notify.error(err.message); }
     btn.disabled = false; btn.textContent = 'Wachtwoord wijzigen';
   });
 
@@ -149,9 +143,9 @@ export async function onMount() {
     btn.disabled = true; btn.textContent = 'Versturen...';
     try {
       const data = await post('/profiel/email-wijzigen', { nieuw_email: nieuw, wachtwoord: ww });
-      toonAlert('em', 'success', data.message);
+      notify.success(data.message);
       document.getElementById('em-form').reset();
-    } catch (err) { toonAlert('em', 'error', escapeHtml(err.message)); }
+    } catch (err) { notify.error(err.message); }
     btn.disabled = false; btn.textContent = 'Bevestigingsmail versturen';
   });
 }
@@ -165,11 +159,3 @@ function clearErrors(ids) {
   ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 }
 
-function toonAlert(prefix, type, tekst) {
-  const el   = document.getElementById(`${prefix}-alert`);
-  const icon = { success: '✅', error: '❌', info: 'ℹ️' };
-  el.className = `alert alert-${type} mb-16`;
-  el.querySelector('.alert-icon').textContent = icon[type] ?? 'ℹ️';
-  document.getElementById(`${prefix}-alert-tekst`).textContent = tekst;
-  el.style.display = 'flex';
-}

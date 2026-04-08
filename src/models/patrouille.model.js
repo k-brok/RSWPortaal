@@ -66,6 +66,7 @@ async function patrouillesVoorGroep(groepId, editieId) {
 async function allePatrouilles(editieId) {
   const [rows] = await db.execute(`
     SELECT p.id, p.naam, p.jongste, p.buiten_mededinging, p.bm_reden,
+           p.aangemeld_bij_start,
            g.naam AS groep_naam_kort,
            v.afkorting,
            CONCAT(g.naam, ' (', v.afkorting, ')') AS groep_naam,

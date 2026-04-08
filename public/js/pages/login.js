@@ -50,7 +50,7 @@ function buildLogin() {
           <div class="form-group">
             <label class="form-label" for="wachtwoord">
               Wachtwoord
-              <a href="#/wachtwoord-vergeten" class="form-label-link">Vergeten?</a>
+              <a href="/wachtwoord-vergeten" class="form-label-link">Vergeten?</a>
             </label>
             <div class="input-with-icon">
               <input
@@ -76,7 +76,7 @@ function buildLogin() {
 
         <div class="auth-footer">
           Nog geen account?
-          <a href="#/registreren">Registreren</a>
+          <a href="/registreren">Registreren</a>
         </div>
 
       </div>
@@ -104,7 +104,7 @@ async function handleSubmit(e) {
 
   try {
     await login(email, wachtwoord);
-    navigate('#/');
+    navigate('/');
   } catch (err) {
     setError(err.message || 'Inloggen mislukt. Controleer je gegevens.');
     btn.disabled = false;

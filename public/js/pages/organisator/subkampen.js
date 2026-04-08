@@ -2,6 +2,7 @@
 
 import { get, post, put, del } from '../../services/api.js';
 import { escapeHtml } from '../../utils/escape.js';
+import { notify }     from '../../utils/notify.js';
 import { buildModals, vulGroepenEnVerenigingen, openSubkampModal, openConfirm }
   from './subkampen-modals.js';
 
@@ -135,7 +136,7 @@ function bindEvents(container) {
       try {
         await put(`/subkampen/${btn.dataset.id}/jongste`, {});
         await laadSubkampen();
-      } catch (e) { alert('Fout: ' + e.message); }
+      } catch (e) { notify.error('Fout: ' + e.message); }
     })
   );
 

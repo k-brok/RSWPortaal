@@ -78,11 +78,11 @@ async function vraagEmailWijziging(req, res) {
 async function bevestigEmailWijziging(req, res) {
   const record = await gebruikerModel.vindOpEmailWijzigToken(req.params.token);
   if (!record) {
-    return res.redirect(`${process.env.APP_URL || ''}/#/profiel?email=mislukt`);
+    return res.redirect(`${process.env.APP_URL || ''}/profiel?email=mislukt`);
   }
   await gebruikerModel.bevestigEmailWijziging(record.id, record.nieuw_email);
   await authService.verwijderAlleRefreshTokens(record.id);
-  res.redirect(`${process.env.APP_URL || ''}/#/login?email=gewijzigd`);
+  res.redirect(`${process.env.APP_URL || ''}/login?email=gewijzigd`);
 }
 
 module.exports = { getProfiel, wijzigWachtwoord, vraagEmailWijziging, bevestigEmailWijziging };

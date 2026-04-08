@@ -21,7 +21,7 @@ async function request(method, path, body = null, retry = true) {
     const ok = await refreshToken();
     if (ok) return request(method, path, body, false);
     clearUser();
-    navigate('#/login');
+    navigate('/login');
     throw new Error('Sessie verlopen — opnieuw inloggen vereist');
   }
 

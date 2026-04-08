@@ -1,15 +1,12 @@
 // public/js/pages/registreren.js — Registratieformulier met rolkeuze
 
-import { post } from '../services/api.js';
-import { getVacatures, getGroepen } from '../services/api.js';
+import { post, getVacatures, getGroepen } from '../services/api.js';
 import { escapeHtml } from '../utils/escape.js';
+import { notify }     from '../utils/notify.js';
 
-// Lees ?rol= query-param uit de hash-URL: #/registreren?rol=vrijwilliger
+// Lees ?rol= query-param uit de URL: /registreren?rol=vrijwilliger
 function getInitieleRol() {
-  const hash = window.location.hash;
-  const idx  = hash.indexOf('?');
-  if (idx === -1) return 'leiding';
-  const params = new URLSearchParams(hash.slice(idx + 1));
+  const params = new URLSearchParams(location.search);
   const rol = params.get('rol');
   if (rol === 'vrijwilliger') return 'vrijwilliger';
   if (rol === 'overig')       return 'overig';
@@ -30,17 +27,13 @@ export async function render() {
             <div class="auth-subtitle">RSW Portaal — Regio De Langstraat</div>
           </div>
 
-          <div id="reg-alert" class="alert alert-info" style="display:none">
-            <span class="alert-icon"><span class="material-icons">info</span></span>
-            <span id="reg-alert-tekst"></span>
-          </div>
 
           <div id="reg-form-container">
             <div class="loading-spinner"></div>
           </div>
 
           <div class="auth-footer" id="reg-footer">
-            Heb je al een account? <a href="#/login">Inloggen</a>
+            Heb je al een account? <a href="/login">Inloggen</a>
           </div>
         </div>
       </div>
@@ -280,10 +273,10 @@ function bindFormEvents() {
         vacature_id: vacature_id ?? null,
         opmerking,
       });
-      toonAlert('success', data.message);
+      notify.success(data.message);
       document.getElementById('reg-form').style.display = 'none';
     } catch (err) {
-      toonAlert('error', escapeHtml(err.message));
+      notify.error(err.message);
       btn.disabled = false;
       btn.textContent = 'Account aanmaken';
     }
@@ -319,12 +312,3 @@ function clearErrors() {
   });
 }
 
-function toonAlert(type, tekst) {
-  const el = document.getElementById('reg-alert');
-  const txt = document.getElementById('reg-alert-tekst');
-  const icon = { success: '✅', error: '❌', info: 'ℹ️' };
-  el.className = `alert alert-${type}`;
-  el.querySelector('.alert-icon').textContent = icon[type] ?? 'ℹ️';
-  txt.textContent = tekst;
-  el.style.display = 'flex';
-}

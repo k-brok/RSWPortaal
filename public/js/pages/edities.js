@@ -1,8 +1,9 @@
 // public/js/pages/edities.js — Editiebeheer (admin: volledig | organisator: bewerken)
 
 import { get, post, put, patch, del } from '../services/api.js';
-import { getUser } from '../services/auth.js';
+import { getUser }    from '../services/auth.js';
 import { escapeHtml } from '../utils/escape.js';
+import { notify }     from '../utils/notify.js';
 
 let edities = [];
 
@@ -131,13 +132,13 @@ function bindEvents(container) {
     container.querySelectorAll('.btn-activeer').forEach(btn =>
       btn.addEventListener('click', async () => {
         try { await post(`/admin/edities/${btn.dataset.id}/activeer`, {}); await laadEdities(); }
-        catch (e) { alert(e.message); }
+        catch (e) { notify.error(e.message); }
       })
     );
     container.querySelectorAll('.btn-deactiveer').forEach(btn =>
       btn.addEventListener('click', async () => {
         try { await post(`/admin/edities/${btn.dataset.id}/deactiveer`, {}); await laadEdities(); }
-        catch (e) { alert(e.message); }
+        catch (e) { notify.error(e.message); }
       })
     );
     container.querySelectorAll('.btn-verwijder').forEach(btn =>
@@ -167,7 +168,7 @@ function bindEvents(container) {
           { veld: btn.dataset.veld, waarde: Number(btn.dataset.waarde) }
         );
         await laadEdities();
-      } catch (e) { alert(e.message); }
+      } catch (e) { notify.error(e.message); }
     })
   );
 }

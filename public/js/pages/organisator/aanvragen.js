@@ -1,6 +1,7 @@
 // organisator/aanvragen.js — Alle openstaande aanvragen in één overzicht
 
 import { get, post } from '../../services/api.js';
+import { notify }    from '../../utils/notify.js';
 
 let data = null; // { leidingAanvragen, vrijwilligersAangemeld, editie }
 
@@ -165,7 +166,7 @@ function bindEvents() {
         }
 
         renderPagina();
-      } catch (e) { alert(e.message); }
+      } catch (e) { notify.error(e.message); }
     });
   });
 
