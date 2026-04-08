@@ -72,9 +72,30 @@ ALTER TABLE catering_aanvragen MODIFY COLUMN gebruiker_id INT NULL;
 -- Stap 5: Voeg 'overig' toe aan rol ENUM
 ALTER TABLE catering_aanvragen MODIFY COLUMN rol ENUM('leiding', 'vrijwilliger', 'overig') NOT NULL;
 
--- Stap 6: Nieuwe kolommen
-ALTER TABLE catering_aanvragen ADD COLUMN IF NOT EXISTS betaald        TINYINT(1)   NOT NULL DEFAULT 0 AFTER opmerking;
-ALTER TABLE catering_aanvragen ADD COLUMN IF NOT EXISTS handmatig_naam VARCHAR(150) NULL              AFTER betaald;
+-- Stap 6: Nieuwe kolommen (via information_schema — compatibel met alle MySQL-versies)
+SET @col_betaald = (
+    SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name   = 'catering_aanvragen'
+      AND column_name  = 'betaald'
+);
+SET @sql = IF(@col_betaald = 0,
+    'ALTER TABLE catering_aanvragen ADD COLUMN betaald TINYINT(1) NOT NULL DEFAULT 0 AFTER opmerking',
+    'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_naam = (
+    SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name   = 'catering_aanvragen'
+      AND column_name  = 'handmatig_naam'
+);
+SET @sql = IF(@col_naam = 0,
+    'ALTER TABLE catering_aanvragen ADD COLUMN handmatig_naam VARCHAR(150) NULL AFTER betaald',
+    'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Stap 7: Herstel FK's (gebruiken nu de losse indexes uit stap 1)
 SET @fk_editie = (
